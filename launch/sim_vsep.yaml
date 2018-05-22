@@ -1,0 +1,81 @@
+system/v_max: 0.2 #0.2
+system/dyaw_max: 0.31416 #0.75
+
+system/camera/pitch: [15.0]
+system/camera/horizontal: [90.0]
+system/camera/vertical: [60.0]
+system/bbx/x: 0.8 #0.5
+system/bbx/y: 0.8 #0.5
+system/bbx/z: 0.3
+system/bbx/overshoot: 0.5
+system/bbx/x_offset: 0.0
+system/bbx/y_offset: 0.0
+system/bbx/z_offset: 0.0
+
+nbvp/gain/free: 0.0
+nbvp/gain/occupied: 0.0
+nbvp/gain/unmapped: 10.0
+nbvp/gain/area: 0.0
+nbvp/gain/probabilistic: 0.0
+nbvp/gain/range: 5 # 3
+nbvp/gain/zero: 0.0
+nbvp/gain/degressive_switchoffLoops: 100 #3
+nbvp/gain/degressive_coeff: 0.1 #0.05 # 0.2
+nbvp/tree/extension_range: 2.5 # 1.5
+nbvp/tree/exact_root: true
+nbvp/tree/initial_iterations: 200
+nbvp/tree/cutoff_iterations: 250
+nbvp/dt: 0.1
+
+nbvp/log/throttle: 0.5
+nbvp/log/on: false
+
+# bounding box: necessary to limit the simulation
+# scenario (smaller than actual gazebo scenario)
+bbx/minX: -7.0
+bbx/minY: -7.0
+bbx/minZ: 1.0
+bbx/maxX: 4.0
+bbx/maxY: 7.0
+bbx/maxZ: 2.0
+
+bbx/plusX: 1.0
+bbx/plusY: 1.0
+
+bbx/softBounds: false
+
+nbvp/softStart: true
+nbvp/softStartMinZ: 0.5 #0.5
+
+# Extension of planning bbx for IG collection (exploration space)
+bbx/explorationExtensionX: 2.0 #MUST BE LESS THAN nbvp/gain/range
+bbx/explorationExtensionY: 2.0 #MUST BE LESS THAN nbvp/gain/range
+bbx/explorationMinZ: -0.5
+bbx/explorationMaxZ: 2.0 #2.5
+
+markers/planMarker_lifetime: 10.0 #10.0
+markers/bestPlanMarker_lifetime: 15.0 #15.0
+markers/replanMarker_lifetime: 10.0 #10.0
+markers/bestReplanMarker_lifetime: 15.0 #15.0
+
+pcl_throttle: 0.25
+inspection_throttle: 0.50
+
+# 2nd layer
+vsep/curious_enable: true
+vsep/curious_range: 6.0
+vsep/curious_coefficient: 50000 #100000
+vsep/branch_max: 20
+vsep/node_max: 500 #150
+vsep/extend_ratio_fixed: 1.0 #must >= 1 #in case extend_enable=false && curious_enable=true
+vsep/extend_ratio_max: 2.0 #must >= 1 #in case extend_enable=true
+vsep/extend_enable: true
+vsep/time_budget: 400.0
+vsep/replanning_distance_min: 0.5 #0.35
+vsep/replanning_extension_ratio: 0.5
+vsep/exp_lower_bound: 0.2 # percentage: limit to switch to full 2 layers exploration
+vsep/exp_upper_bound: 0.87 # percentage: limit to switch to saliency based exploration
+vsep/exp_filter_window: 3 # 1: means no average for exploration rate
+
+vsep/sal_ground_remove_level: -10 #means no
+vsep/sal_wait_for_planner: false

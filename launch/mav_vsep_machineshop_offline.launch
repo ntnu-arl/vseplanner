@@ -1,0 +1,59 @@
+<!-- Launch me -->
+<launch>
+
+  <param name="use_sim_time" value="true" />
+  <!-- Mapping -->
+
+  <!-- Saliency processing -->
+	<arg name="imagestream" value="/cam0/image_rect"  />
+	<arg name="algorithm" value="VOCUS2" />
+	<node name="saliencymap$(arg algorithm)" pkg="visual_saliency" type="saliencyDetectionVOCUS2" output="screen">
+		<remap from="/rgbimage_in" to="$(arg imagestream)" />
+		<remap from="/saliency/image" to="/saliency/image" />
+		<param name="image_resize_percent" type="double" value="0.25"/>
+		<param name="threshold_percent" type="double" value="0.025" /> <!-- 0.0125 -->
+    <param name="topcut_enable" type="bool" value="true" />
+    <param name="topcut_pixels" type="int" value="0" />
+    <param name="time_show" type="bool" value="false" />
+    <param name="test_option" type="int" value="0" /> <!-- 0: no test, 1: test an image, 2: test images in folder -->
+	</node>
+
+  <!-- <node name="foo_throttler" type="throttle" pkg="topic_tools" args="messages /cam0/image_rect 10 /cam0/image_rect_10hz" /> -->
+
+  <!-- Exploration -->
+  <node name="nbvplanner" pkg="nbvplanner" type="nbvPlanner" respawn="false" output="screen">
+    <!--<param name="waypoint_x" type="double" value="0.425" />
+    <param name="waypoint_y" type="double" value="-0.125" />
+    <param name="waypoint_z" type="double" value="1.375" />-->
+    <param name="tf_frame" type="string" value="/world" />
+    <param name="body_frame" type="string" value="/body" />
+    <param name="tf_update_frequency" type="double" value="5.0" /> <!-- okvis:=200 rovio:=5 duo:=2.5 !!!Normally 20 but tranform uses ros::Time(mpFilter_->safe_.t_)!!! -->
+    <param name="treat_unknown_as_occupied" type="boolean" value="False" />
+    <param name="change_detection_enabled" type="boolean" value="False" />
+    <param name="resolution" type="double" value="0.20" /> <!--0.20-->
+    <param name="visualize_max_z" type="double" value="2.5" />
+    <param name="visualize_min_z" type="double" value="-0.5" />
+    <param name="sensor_max_range" type="double" value="5.0" /> <!--7.5-->
+    <param name="probability_hit" type="double" value="0.65" /> <!--0.65-->
+    <param name="probability_miss" type="double" value="0.4" /> <!--0.4-->
+    <param name="threshold_min" type="double" value="0.12" /> <!--0.12-->
+    <param name="threshold_max" type="double" value="0.97" /> <!--0.97-->
+    <param name="threshold_occupancy" type="double" value="0.7" /> <!--0.7-->
+    <param name="mesh_resolution" type="double" value="0.10" />
+    <param name="map_publish_frequency" type="double" value="2.0" />
+    <remap from="pose" to="msf_core/pose" />
+    <remap from="odometry" to="msf_core/odometry" /> <!-- rovio/odometry_body icp_rovio/odometry_body --> <!--UNTIL MEMORY LEAK GETS FIXED-->
+    <remap from="pointcloud_throttled" to="stereo_vision"/> <!-- stereo_vision picoflexx/points -->
+		<remap from="image_saliency" to="saliency/image_norm"/>
+		<remap from="image_info" to="cam0/camera_info"/>
+    <!--<param name="full_image_width" type="double" value="640" />
+    <param name="full_image_height" type="double" value="480" />
+    <remap from="pointcloud" to="stereo_vision" />
+    <remap from="cam0/camera_info" to="cam0/camera_info"/>
+    <remap from="cam1/camera_info" to="cam1/camera_info"/>
+    <remap from="disparity" to="disparity" />-->
+    <rosparam command="load" file="$(find nbvplanner)/../../launch/mav_vsep_machineshop.yaml" /> <!-- mav_informative_exploration.yaml mav_night_exploration.yaml -->
+  </node>
+  <!-- rosservice call /nbvplanner '{header: {stamp: now, frame_id: world}}' -->
+
+</launch>

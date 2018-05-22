@@ -1,0 +1,50 @@
+[submodule "misc/catkin_simple"]
+	path = misc/catkin_simple
+	url = https://github.com/catkin/catkin_simple
+[submodule "misc/eigen_catkin"]
+	path = misc/eigen_catkin
+	url = https://github.com/ethz-asl/eigen_catkin
+[submodule "misc/eigen_checks"]
+	path = misc/eigen_checks
+	url = https://github.com/ethz-asl/eigen_checks
+[submodule "misc/gflags_catkin"]
+	path = misc/gflags_catkin
+	url = https://github.com/ethz-asl/gflags_catkin
+[submodule "misc/glog_catkin"]
+	path = misc/glog_catkin
+	url = https://github.com/ethz-asl/glog_catkin
+[submodule "misc/kindr"]
+	path = misc/kindr
+	url = https://github.com/ethz-asl/kindr
+[submodule "misc/minkindr"]
+	path = misc/minkindr
+	url = https://github.com/ethz-asl/minkindr
+[submodule "misc/minkindr_ros"]
+	path = misc/minkindr_ros
+	url = https://github.com/ethz-asl/minkindr_ros
+[submodule "octomap/octomap"]
+	path = octomap/octomap
+	url = https://github.com/unr-arl/octomap
+	branch = saliency
+[submodule "octomap/octomap_msgs"]
+	path = octomap/octomap_msgs
+	url = https://github.com/OctoMap/octomap_msgs
+	branch = jade-devel
+[submodule "octomap/octomap_ros"]
+	path = octomap/octomap_ros
+	url = https://github.com/OctoMap/octomap_ros
+	branch = jade-devel
+[submodule "rotors_simulator"]
+	path = rotors_simulator
+	url = https://github.com/unr-arl/rotors_simulator
+	branch = devel/jade
+[submodule "visual_saliency_ros"]
+	path = visual_saliency_ros
+	url = https://github.com/unr-arl/visual_saliency_ros
+[submodule "planner/mav_comm"]
+	path = planner/mav_comm
+	url = https://github.com/unr-arl/mav_comm
+[submodule "planner/volumetric_mapping"]
+	path = planner/volumetric_mapping
+	url = https://github.com/unr-arl/volumetric_mapping
+	branch = visual_saliency

@@ -1,0 +1,4 @@
+#http://wiki.ros.org/srv
+string filename
+-------
+bool success
