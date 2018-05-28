@@ -1,64 +1,60 @@
-system/v_max: 0.0125 #0.125 #0.75 #must be in m/s
-system/dyaw_max: 0.0261 #0.0375 #0.0261 #0.261=15deg #0.261 #15 #must be in rad/s
-# ZED values (narrow FoV, will constrain system inside initialy cleared BBX -if any- if unrealistic dimensions aren't used -half the VI ones-)
-system/camera/pitch: [17.5] #10.0
-system/camera/horizontal: [85.0] #45.0
-system/camera/vertical: [55.0] #30.0
-system/bbx/x: 0.85 #0.85
-system/bbx/y: 0.85 #0.85
-system/bbx/z: 0.25 #0.25
-system/bbx/overshoot: 0.125 #0.25
+system/v_max: 0.0125
+system/dyaw_max: 0.0261
+system/camera/pitch: [17.5]
+system/camera/horizontal: [85.0]
+system/camera/vertical: [55.0]
+system/bbx/x: 0.85
+system/bbx/y: 0.85
+system/bbx/z: 0.25
+system/bbx/overshoot: 0.125
 system/bbx/x_offset: 0.0
 system/bbx/y_offset: 0.0
-system/bbx/z_offset: -0.125 #-0.25
+system/bbx/z_offset: -0.125
 
-nbvp/gain/free: 0.0
-nbvp/gain/occupied: 10.0
-nbvp/gain/unmapped: 100.0
-nbvp/gain/area: 0.0
-nbvp/gain/probabilistic: 1.0
-nbvp/gain/zero: 0.0
-nbvp/gain/range: 5.0 #3.5: original; 4.0: for vsep
-nbvp/gain/degressive_switchoffLoops: 3
-nbvp/gain/degressive_coeff: 0.5
-nbvp/tree/extension_range: 2.0 #1.5: original; #2.0: for vsep
-# False: using odometry; True: using last best node from planner
-nbvp/tree/exact_root: false
-nbvp/tree/initial_iterations: 150 #250
-nbvp/tree/cutoff_iterations: 150 #500
-nbvp/dt: 0.1
+vsep/yaw_sampling_limit:  6.283185
+vsep/gain/free: 0.0
+vsep/gain/occupied: 10.0
+vsep/gain/unmapped: 100.0
+vsep/gain/area: 0.0
+vsep/gain/probabilistic: 1.0
+vsep/gain/zero: 0.0
+vsep/gain/range: 5.0
+vsep/gain/degressive_switchoffLoops: 3
+vsep/gain/degressive_coeff: 0.5
+vsep/tree/extension_range: 2.0
+vsep/tree/exact_root: false
+vsep/tree/initial_iterations: 150
+vsep/tree/cutoff_iterations: 150
+vsep/dt: 0.1
 
-nbvp/log/throttle: 0.5
-nbvp/log/on: false
+vsep/log/throttle: 0.5
+vsep/log/on: false
 
-# NOTE: Eventually anything outside 0.5*system/bbx/z+system/bbx/overshoot will be dropped #
-# Sampling by e.g. dropping: <newState.z() < params_.minZ_ + 0.5 * params_.boundingBox_.z()> etc.
-bbx/minX: 0.0 #-5.0  #0.0
-bbx/minY: -2.5 #-5.0  #-2.5
-bbx/minZ: 0.85 #0.5  #0.75
-bbx/maxX: 9.0 #5.0  #9.0
-bbx/maxY: 2.5 #5.0  #2.5
-bbx/maxZ: 1.65 #1.5  #1.45
+bbx/minX: 0.0
+bbx/minY: -2.5
+bbx/minZ: 0.85
+bbx/maxX: 9.0
+bbx/maxY: 2.5
+bbx/maxZ: 1.65
 
 bbx/plusX: 0
 bbx/plusY: 0.5
 
 bbx/softBounds: false
 
-nbvp/softStart: true
-nbvp/softStartMinZ: 0.5 #0.5
+vsep/softStart: true
+vsep/softStartMinZ: 0.5
 
-# Extension of planning bbx for IG collection (exploration space)
-bbx/explorationExtensionX: 2.5 #MUST BE LESS THAN nbvp/gain/range
-bbx/explorationExtensionY: 2.5 #MUST BE LESS THAN nbvp/gain/range
+bbx/explorationExtensionX: 2.5
+bbx/explorationExtensionY: 2.5
 bbx/explorationMinZ: -0.25
 bbx/explorationMaxZ: 1.75
-# Hard bounds to drop nodes outside bbx (see nbvInspection::RrtTree::iterate)
 
-markers/planMarker_lifetime: 10.0 #10.0
-markers/bestPlanMarker_lifetime: 15.0 #15.0
-markers/replanMarker_lifetime: 10.0 #10.0
-markers/bestReplanMarker_lifetime: 15.0 #15.0
+
+markers/planMarker_lifetime: 10.0
+markers/bestPlanMarker_lifetime: 15.0
+markers/replanMarker_lifetime: 10.0
+markers/bestReplanMarker_lifetime: 15.0
 
 pcl_throttle: 0.25
 inspection_throttle: 0.50
@@ -67,11 +63,11 @@ inspection_throttle: 0.50
 vsep/curious_enable: true
 vsep/curious_range: 5.0
 vsep/curious_coefficient: 100000
-vsep/branch_max: 20 #20
-vsep/node_max: 500 #150 #100
+vsep/branch_max: 20
+vsep/node_max: 500
 vsep/extend_ratio_fixed: 2.5 #must >= 1 #in case extend_enable=false && curious_enable=true
 vsep/extend_ratio_max: 2.0 #must >= 1 #in case extend_enable=true
-vsep/extend_enable: true #enable estimate ratio from exploration rate
+vsep/extend_enable: false #enable estimate ratio from exploration rate
 vsep/time_budget: 300.0 #5mins
 vsep/replanning_distance_min: 0.5 #0.35
 vsep/replanning_extension_ratio: 1.0 #0.3

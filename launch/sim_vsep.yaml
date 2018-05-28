@@ -12,23 +12,24 @@ system/bbx/x_offset: 0.0
 system/bbx/y_offset: 0.0
 system/bbx/z_offset: 0.0
 
-nbvp/gain/free: 0.0
-nbvp/gain/occupied: 0.0
-nbvp/gain/unmapped: 10.0
-nbvp/gain/area: 0.0
-nbvp/gain/probabilistic: 0.0
-nbvp/gain/range: 5 # 3
-nbvp/gain/zero: 0.0
-nbvp/gain/degressive_switchoffLoops: 100 #3
-nbvp/gain/degressive_coeff: 0.1 #0.05 # 0.2
-nbvp/tree/extension_range: 2.5 # 1.5
-nbvp/tree/exact_root: true
-nbvp/tree/initial_iterations: 200
-nbvp/tree/cutoff_iterations: 250
-nbvp/dt: 0.1
+vsep/yaw_sampling_limit: 6.283185
+vsep/gain/free: 0.0
+vsep/gain/occupied: 0.0
+vsep/gain/unmapped: 10.0
+vsep/gain/area: 0.0
+vsep/gain/probabilistic: 0.0
+vsep/gain/range: 5 # 3
+vsep/gain/zero: 0.0
+vsep/gain/degressive_switchoffLoops: 100 #3
+vsep/gain/degressive_coeff: 0.1 #0.05 # 0.2
+vsep/tree/extension_range: 2.5 # 1.5
+vsep/tree/exact_root: true
+vsep/tree/initial_iterations: 200
+vsep/tree/cutoff_iterations: 250
+vsep/dt: 0.1
 
-nbvp/log/throttle: 0.5
-nbvp/log/on: false
+vsep/log/throttle: 0.5
+vsep/log/on: false
 
 # bounding box: necessary to limit the simulation
 # scenario (smaller than actual gazebo scenario)
@@ -44,12 +45,12 @@ bbx/plusY: 1.0
 
 bbx/softBounds: false
 
-nbvp/softStart: true
-nbvp/softStartMinZ: 0.5 #0.5
+vsep/softStart: true
+vsep/softStartMinZ: 0.5 #0.5
 
 # Extension of planning bbx for IG collection (exploration space)
-bbx/explorationExtensionX: 2.0 #MUST BE LESS THAN nbvp/gain/range
-bbx/explorationExtensionY: 2.0 #MUST BE LESS THAN nbvp/gain/range
+bbx/explorationExtensionX: 2.0 #MUST BE LESS THAN vsep/gain/range
+bbx/explorationExtensionY: 2.0 #MUST BE LESS THAN vsep/gain/range
 bbx/explorationMinZ: -0.5
 bbx/explorationMaxZ: 2.0 #2.5
 

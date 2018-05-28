@@ -21,7 +21,7 @@
   <!-- <node name="foo_throttler" type="throttle" pkg="topic_tools" args="messages /cam0/image_rect 10 /cam0/image_rect_10hz" /> -->
 
   <!-- Exploration -->
-  <node name="nbvplanner" pkg="nbvplanner" type="nbvPlanner" respawn="false" output="screen">
+  <node name="vseplanner" pkg="vseplanner" type="vsePlanner" respawn="false" output="screen">
     <!--<param name="waypoint_x" type="double" value="0.425" />
     <param name="waypoint_y" type="double" value="-0.125" />
     <param name="waypoint_z" type="double" value="1.375" />-->
@@ -52,8 +52,8 @@
     <remap from="cam0/camera_info" to="cam0/camera_info"/>
     <remap from="cam1/camera_info" to="cam1/camera_info"/>
     <remap from="disparity" to="disparity" />-->
-    <rosparam command="load" file="$(find nbvplanner)/../../launch/mav_vsep_machineshop.yaml" /> <!-- mav_informative_exploration.yaml mav_night_exploration.yaml -->
+    <rosparam command="load" file="$(find vseplanner)/../../launch/mav_vsep_machineshop.yaml" /> <!-- mav_informative_exploration.yaml mav_night_exploration.yaml -->
   </node>
-  <!-- rosservice call /nbvplanner '{header: {stamp: now, frame_id: world}}' -->
+  <!-- rosservice call /vseplanner '{header: {stamp: now, frame_id: world}}' -->
 
 </launch>

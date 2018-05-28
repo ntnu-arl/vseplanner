@@ -21,7 +21,7 @@
   <!-- <node name="foo_throttler" type="throttle" pkg="topic_tools" args="messages /cam0/image_rect 10 /cam0/image_rect_10hz" /> -->
 
   <!-- Exploration -->
-  <node name="nbvplanner" pkg="nbvplanner" type="nbvPlanner" respawn="false" output="screen">
+  <node name="vseplanner" pkg="vseplanner" type="vsePlanner" respawn="false" output="screen">
     <!--<param name="waypoint_x" type="double" value="0.425" />
     <param name="waypoint_y" type="double" value="-0.125" />
     <param name="waypoint_z" type="double" value="1.375" />-->
@@ -41,14 +41,14 @@
     <param name="threshold_occupancy" type="double" value="0.7" /> <!--0.7-->
     <param name="mesh_resolution" type="double" value="0.10" />
     <param name="map_publish_frequency" type="double" value="2.0" />
-    <remap from="bsp_filter/propagateFilterState" to="bsp_rovio/propagateFilterState" />
+    <remap from="vse_filter/propagateFilterState" to="vse_rovio/propagateFilterState" />
     <remap from="slam_filter/sendFilterState" to="rovio/sendFilterState" /> <!-- icp_rovio/sendFilterState rovio/sendFilterState -->
     <remap from="pose" to="msf_core/pose" />
     <remap from="odometry" to="msf_core/odometry" /> <!-- rovio/odometry_body icp_rovio/odometry_body --> <!--UNTIL MEMORY LEAK GETS FIXED-->
     <remap from="pointcloud_throttled" to="stereo_vision"/> <!-- stereo_vision picoflexx/points -->
 		<remap from="image_saliency" to="saliency/image_norm"/>
 		<remap from="image_info" to="cam0/camera_info"/>
-    <rosparam command="load" file="$(find nbvplanner)/../../launch/mav_vsep_arena.yaml" /> <!-- mav_informative_exploration.yaml mav_night_exploration.yaml -->
+    <rosparam command="load" file="$(find vseplanner)/../../launch/mav_vsep_arena.yaml" /> <!-- mav_informative_exploration.yaml mav_night_exploration.yaml -->
   </node>
 
 </launch>
