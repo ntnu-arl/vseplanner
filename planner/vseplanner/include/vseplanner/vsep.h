@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
+ /*
+ * Modified by Tung Dang, University of Nevada, Reno.
+ * The provided code is an implementation of the visual saliency-aware
+ * exploration algorithm.
+ */
+
 #ifndef NBVP_H_
 #define NBVP_H_
 
@@ -27,11 +33,11 @@
 #include <nav_msgs/Path.h>
 
 #include <octomap_world/octomap_manager.h>
-#include <nbvplanner/nbvp_srv.h>
-#include <nbvplanner/octomap_srv.h>
-#include <nbvplanner/mesh_structure.h>
-#include <nbvplanner/tree.hpp>
-#include <nbvplanner/rrt.h>
+#include <vseplanner/vsep_srv.h>
+#include <vseplanner/octomap_srv.h>
+#include <vseplanner/mesh_structure.h>
+#include <vseplanner/tree.hpp>
+#include <vseplanner/rrt.h>
 
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/CameraInfo.h>
@@ -44,10 +50,10 @@
 #define SQ(x) ((x)*(x))
 #define SQRT2 0.70711
 
-namespace nbvInspection {
+namespace vsExploration {
 
 template<typename stateVec>
-class nbvPlanner
+class vsePlanner
 {
 
   ros::NodeHandle nh_;
@@ -86,12 +92,12 @@ class nbvPlanner
   typedef std::vector<stateVec> vector_t;
   TreeBase<stateVec> * tree_;
 
-  nbvPlanner(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
-  ~nbvPlanner();
+  vsePlanner(const ros::NodeHandle& nh, const ros::NodeHandle& nh_private);
+  ~vsePlanner();
   bool setParams();
   void posCallback(const geometry_msgs::PoseWithCovarianceStamped& pose);
   void odomCallback(const nav_msgs::Odometry& pose);
-  bool plannerCallback(nbvplanner::nbvp_srv::Request& req, nbvplanner::nbvp_srv::Response& res);
+  bool plannerCallback(vseplanner::vsep_srv::Request& req, vseplanner::vsep_srv::Response& res);
   void insertPointcloudWithTf(const sensor_msgs::PointCloud2::ConstPtr& pointcloud);
   void insertPointcloudWithTfCamUp(const sensor_msgs::PointCloud2::ConstPtr& pointcloud);
   void insertPointcloudWithTfCamDown(const sensor_msgs::PointCloud2::ConstPtr& pointcloud);

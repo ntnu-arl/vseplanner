@@ -30,8 +30,8 @@
 
 #include <mav_msgs/conversions.h>
 #include <mav_msgs/default_topics.h>
-#include <nbvplanner/nbvp_srv.h>
-#include <interface_nbvp_rotors/trigger_planner.h>
+#include <vseplanner/vsep_srv.h>
+#include <interface_vsep_rotors/trigger_planner.h>
 
 bool initEnable = true;
 int iteration = 0;
@@ -44,8 +44,8 @@ trajectory_msgs::MultiDOFJointTrajectoryPoint trajectory_point_msg;
 ros::Publisher * trajectory_pubpnt;
 double dt = 1.0;
 
-bool trigger_planner(interface_nbvp_rotors::trigger_planner::Request  &req,
-                      interface_nbvp_rotors::trigger_planner::Response &res){
+bool trigger_planner(interface_vsep_rotors::trigger_planner::Request  &req,
+                      interface_vsep_rotors::trigger_planner::Response &res){
   ROS_INFO("Trigger calling planner");
   triggerPlanner = req.trigger;
   res.success = req.trigger;
@@ -53,11 +53,11 @@ bool trigger_planner(interface_nbvp_rotors::trigger_planner::Request  &req,
   if (triggerPlanner){
     triggerPlanner = false;
     ROS_INFO_THROTTLE(0.5, "Planning iteration %i", iteration);
-    nbvplanner::nbvp_srv planSrv;
+    vseplanner::vsep_srv planSrv;
     planSrv.request.header.stamp = ros::Time::now();
     planSrv.request.header.seq = iteration;
     planSrv.request.header.frame_id = "world";
-    if (ros::service::call("nbvplanner", planSrv)) {
+    if (ros::service::call("vseplanner", planSrv)) {
       n_seq++;
       if (planSrv.response.path.size() == 0) {
         ros::Duration(1.0).sleep();
@@ -124,9 +124,9 @@ int main(int argc, char** argv)
 
 
   std::string ns = ros::this_node::getName();
-  if (!ros::param::get(ns + "/nbvp/dt", dt)) {
+  if (!ros::param::get(ns + "/vsep/dt", dt)) {
     ROS_FATAL("Could not start exploration. Parameter missing! Looking for %s",
-              (ns + "/nbvp/dt").c_str());
+              (ns + "/vsep/dt").c_str());
     return -1;
   }
 
@@ -176,11 +176,11 @@ int main(int argc, char** argv)
     // Start planning: The planner is called and the computed path sent to the controller.
     while (ros::ok()) {
       ROS_INFO_THROTTLE(0.5, "Planning iteration %i", iteration);
-      nbvplanner::nbvp_srv planSrv;
+      vseplanner::vsep_srv planSrv;
       planSrv.request.header.stamp = ros::Time::now();
       planSrv.request.header.seq = iteration;
       planSrv.request.header.frame_id = "world";
-      if (ros::service::call("nbvplanner", planSrv)) {
+      if (ros::service::call("vseplanner", planSrv)) {
         n_seq++;
         if (planSrv.response.path.size() == 0) {
           ros::Duration(1.0).sleep();

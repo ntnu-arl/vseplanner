@@ -19,7 +19,7 @@
 
 #include <eigen3/Eigen/Dense>
 #include <ros/ros.h>
-#include <nbvplanner/mesh_structure.h>
+#include <vseplanner/mesh_structure.h>
 
 mesh::StlMesh::StlMesh()
     : isLeaf_(true),

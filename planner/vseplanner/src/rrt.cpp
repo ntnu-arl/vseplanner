@@ -14,16 +14,22 @@
  * limitations under the License.
  */
 
+ /*
+ * Modified by Tung Dang, University of Nevada, Reno.
+ * The provided code is an implementation of the visual saliency-aware
+ * exploration algorithm.
+ */
+
 #ifndef RRTTREE_HPP_
 #define RRTTREE_HPP_
 
 #include <cstdlib>
-#include <nbvplanner/rrt.h>
-#include <nbvplanner/tree.hpp>
+#include <vseplanner/rrt.h>
+#include <vseplanner/tree.hpp>
 #include <random>
 
-nbvInspection::RrtTree::RrtTree()
-    : nbvInspection::TreeBase<StateVec>::TreeBase()
+vsExploration::RrtTree::RrtTree()
+    : vsExploration::TreeBase<StateVec>::TreeBase()
 {
   kdTree_ = kd_create(3);
   iterationCount_ = 0;
@@ -34,13 +40,13 @@ nbvInspection::RrtTree::RrtTree()
   // If logging is required, set up files here
   bool ifLog = false;
   std::string ns = ros::this_node::getName();
-  ros::param::get(ns + "/nbvp/log/on", ifLog);
+  ros::param::get(ns + "/vsep/log/on", ifLog);
   if (ifLog) {
     time_t rawtime;
     struct tm * ptm;
     time(&rawtime);
     ptm = gmtime(&rawtime);
-    logFilePath_ = ros::package::getPath("nbvplanner") + "/data/"
+    logFilePath_ = ros::package::getPath("vseplanner") + "/data/"
         + std::to_string(ptm->tm_year + 1900) + "_" + std::to_string(ptm->tm_mon + 1) + "_"
         + std::to_string(ptm->tm_mday) + "_" + std::to_string(ptm->tm_hour) + "_"
         + std::to_string(ptm->tm_min) + "_" + std::to_string(ptm->tm_sec);
@@ -54,7 +60,7 @@ nbvInspection::RrtTree::RrtTree()
   cam_model_ready_ = false;
 }
 
-nbvInspection::RrtTree::RrtTree(mesh::StlMesh * mesh, volumetric_mapping::OctomapManager * manager)
+vsExploration::RrtTree::RrtTree(mesh::StlMesh * mesh, volumetric_mapping::OctomapManager * manager)
 {
   mesh_ = mesh;
   manager_ = manager;
@@ -67,13 +73,13 @@ nbvInspection::RrtTree::RrtTree(mesh::StlMesh * mesh, volumetric_mapping::Octoma
   // If logging is required, set up files here
   bool ifLog = false;
   std::string ns = ros::this_node::getName();
-  ros::param::get(ns + "/nbvp/log/on", ifLog);
+  ros::param::get(ns + "/vsep/log/on", ifLog);
   if (ifLog) {
     time_t rawtime;
     struct tm * ptm;
     time(&rawtime);
     ptm = gmtime(&rawtime);
-    logFilePath_ = ros::package::getPath("nbvplanner") + "/data/"
+    logFilePath_ = ros::package::getPath("vseplanner") + "/data/"
         + std::to_string(ptm->tm_year + 1900) + "_" + std::to_string(ptm->tm_mon + 1) + "_"
         + std::to_string(ptm->tm_mday) + "_" + std::to_string(ptm->tm_hour) + "_"
         + std::to_string(ptm->tm_min) + "_" + std::to_string(ptm->tm_sec);
@@ -87,7 +93,7 @@ nbvInspection::RrtTree::RrtTree(mesh::StlMesh * mesh, volumetric_mapping::Octoma
   cam_model_ready_ = false;
 }
 
-nbvInspection::RrtTree::~RrtTree()
+vsExploration::RrtTree::~RrtTree()
 {
   delete rootNode_;
   kd_free(kdTree_);
@@ -104,7 +110,7 @@ nbvInspection::RrtTree::~RrtTree()
 
 }
 
-void nbvInspection::RrtTree::setStateFromPoseMsg(
+void vsExploration::RrtTree::setStateFromPoseMsg(
     const geometry_msgs::PoseWithCovarianceStamped& pose)
 {
   // Get latest transform to the planning frame and transform the pose
@@ -178,12 +184,12 @@ void nbvInspection::RrtTree::setStateFromPoseMsg(
       if (uninspected.points.size() > 0) {
         params_.inspectionPath_.publish(uninspected);
       }*/
-      ROS_WARN_THROTTLE(1.0,"bsp_planner<set_state_from_pose_msg>: Mesh case unimplemented!!!");
+      ROS_WARN_THROTTLE(1.0,"planner<set_state_from_pose_msg>: Mesh case unimplemented!!!");
     }
   }
 }
 
-void nbvInspection::RrtTree::setStateFromOdometryMsg(
+void vsExploration::RrtTree::setStateFromOdometryMsg(
     const nav_msgs::Odometry& pose)
 {
   // Get latest transform to the planning frame and transform the pose
@@ -257,12 +263,12 @@ void nbvInspection::RrtTree::setStateFromOdometryMsg(
       if (uninspected.points.size() > 0) {
         params_.inspectionPath_.publish(uninspected);
       }*/
-      ROS_WARN_THROTTLE(1.0,"bsp_planner<set_state_from_odometry_msg>: Mesh case unimplemented!!!");
+      ROS_WARN_THROTTLE(1.0,"planner<set_state_from_odometry_msg>: Mesh case unimplemented!!!");
     }
   }
 }
 
-void nbvInspection::RrtTree::setPeerStateFromPoseMsg(
+void vsExploration::RrtTree::setPeerStateFromPoseMsg(
     const geometry_msgs::PoseWithCovarianceStamped& pose, int n_peer)
 {
   // Get latest transform to the planning frame and transform the pose
@@ -289,22 +295,18 @@ void nbvInspection::RrtTree::setPeerStateFromPoseMsg(
   }
 }
 
-bool nbvInspection::RrtTree::resampleFirstVertex(int numRuns)
+bool vsExploration::RrtTree::resampleFirstVertex(int numRuns)
 {
-//Nuc: This function preforms 1.5st-level orientation resampling of the RRT 1st-level best-path's first vertex
-  nbvInspection::Node<StateVec> * targetNode = bestNode_;
+
+  vsExploration::Node<StateVec> * targetNode = bestNode_;
   if (targetNode->parent_ == NULL)
     return false;
 
   while (targetNode->parent_ != rootNode_ && targetNode->parent_ != NULL) {
     targetNode = targetNode->parent_;
   }
-  nbvInspection::Node<StateVec> * sourceNode = targetNode->parent_;
+  vsExploration::Node<StateVec> * sourceNode = targetNode->parent_;
 
-  //Nuc: Extract single-node gain out of cumulative one - accounting for degressive coefficient
-  //targetNode->gain_ -= sourceNode->gain_;
-  //if (numRuns<params_.degressiveSwitchoffLoops_)
-  //  targetNode->gain_ /= exp(-params_.degressiveCoeff_ * targetNode->distance_);  //behavior is limited to initial runs
 
   StateVec targetState = targetNode->state_;
   double targetState_originalYaw = targetState[3];
@@ -320,7 +322,6 @@ bool nbvInspection::RrtTree::resampleFirstVertex(int numRuns)
     if (targetState[3] > M_PI) targetState[3] -= 2.0 * M_PI;
     else if (targetState[3] < -M_PI) targetState[3] += 2.0 * M_PI;
 
-    //Nuc: Compute multi-component gain
     auto targetNodeGain = gain(targetState);
     double target_node_gain;
     if (numRuns<params_.degressiveSwitchoffLoops_)
@@ -336,27 +337,16 @@ bool nbvInspection::RrtTree::resampleFirstVertex(int numRuns)
     }
   }
 
-  //Nuc: Re-scale for degressive coefficient and for cumulative gain
-  //if (numRuns<params_.degressiveSwitchoffLoops_)
-  //  targetNode->gain_ = sourceNode->gain_ + targetNode->gain_ * exp(-params_.degressiveCoeff_ * targetNode->distance_);  //behavior is limited to initial runs
-  //else
-  //  targetNode->gain_ = sourceNode->gain_ + targetNode->gain_;
 
-  //Nuc: Re-publish modified node (NBVP-level variant of MarkerArray visualization)
   if (reOrient_success){
-    rePublishNode(targetNode, nbvInspection::NBVP_PLANLEVEL);
+    rePublishNode(targetNode, vsExploration::NBVP_PLANLEVEL);
   }
-
-  //TODO: Nuc: Update subsequent nodes and best (global) IG
-  //if (targetNode->gain_ > ...) {
-  //  ...;
-  //}
 
   return reOrient_success;
 
 }
 
-void nbvInspection::RrtTree::rePublishNode(Node<StateVec> * node, nbvInspection::PlanningLevel planninglevel, int nodeorder)
+void vsExploration::RrtTree::rePublishNode(Node<StateVec> * node, vsExploration::PlanningLevel planninglevel, int nodeorder)
 {
   const float eps = 0.001; //std::numeric_limits<float>::epsilon();
   for (std::vector<visualization_msgs::Marker>::iterator it = params_.planningPath_markers_.markers.begin(); it != params_.planningPath_markers_.markers.end(); ++it){
@@ -376,7 +366,7 @@ void nbvInspection::RrtTree::rePublishNode(Node<StateVec> * node, nbvInspection:
   }
 }
 
-void nbvInspection::RrtTree::iterate(int numRuns, int plannerMode)
+void vsExploration::RrtTree::iterate(int numRuns, int plannerMode)
 {
 // In this function a new configuration is sampled and added to the tree.
   StateVec newState;
@@ -419,7 +409,6 @@ void nbvInspection::RrtTree::iterate(int numRuns, int plannerMode)
     solutionFound_pos = true;
   }
   if (!solutionFound_pos){
-    //ROS_WARN("bsp_planner<iterate>: newState[POS] random sampling failed to find admissible solution.");
     return;
   }
 
@@ -430,7 +419,7 @@ void nbvInspection::RrtTree::iterate(int numRuns, int plannerMode)
     return;
   }
 
-  nbvInspection::Node<StateVec> * newParent = (nbvInspection::Node<StateVec> *) kd_res_item_data(nearest);
+  vsExploration::Node<StateVec> * newParent = (vsExploration::Node<StateVec> *) kd_res_item_data(nearest);
   kd_res_free(nearest);
 
 // Check for collision of new connection plus some overshoot distance.
@@ -450,7 +439,7 @@ void nbvInspection::RrtTree::iterate(int numRuns, int plannerMode)
     // Sample the new orientation
     newState[3] = params_.yaw_sampling_limit_ * (((double) rand()) / ((double) RAND_MAX) - 0.5); //2.0 * M_PI
     // Create new node and insert into tree
-    nbvInspection::Node<StateVec> * newNode = new nbvInspection::Node<StateVec>;
+    vsExploration::Node<StateVec> * newNode = new vsExploration::Node<StateVec>;
     newNode->state_ = newState;
     newNode->parent_ = newParent;
     newNode->distance_ = newParent->distance_ + direction.norm();
@@ -474,8 +463,8 @@ void nbvInspection::RrtTree::iterate(int numRuns, int plannerMode)
     // Display new node
     //publishNode(newNode);
 
-    if (plannerMode == 2)  publishNode(newNode, nbvInspection::SAL_PLANLEVEL);
-    else publishNode(newNode, nbvInspection::NBVP_PLANLEVEL);
+    if (plannerMode == 2)  publishNode(newNode, vsExploration::SAL_PLANLEVEL);
+    else publishNode(newNode, vsExploration::NBVP_PLANLEVEL);
 
     // Update best IG and node if applicable
     if (newNode->gain_ > bestGain_) {
@@ -490,7 +479,7 @@ void nbvInspection::RrtTree::iterate(int numRuns, int plannerMode)
   }
 }
 
-void nbvInspection::RrtTree::initialize(int numRuns)
+void vsExploration::RrtTree::initialize(int numRuns)
 {
 // This function is to initialize the tree, including insertion of remainder of previous best branch.
   g_ID_ = 0;
@@ -540,7 +529,7 @@ void nbvInspection::RrtTree::initialize(int numRuns)
       kd_res_free(nearest);
       continue;
     }
-    nbvInspection::Node<StateVec> * newParent = (nbvInspection::Node<StateVec> *) kd_res_item_data(
+    vsExploration::Node<StateVec> * newParent = (vsExploration::Node<StateVec> *) kd_res_item_data(
         nearest);
     kd_res_free(nearest);
 
@@ -559,7 +548,7 @@ void nbvInspection::RrtTree::initialize(int numRuns)
             origin+params_.boundingBoxOffset_, origin+params_.boundingBoxOffset_+direction+ direction.normalized() * params_.dOvershoot_,
             params_.boundingBox_)) {
       // Create new node and insert into tree
-      nbvInspection::Node<StateVec> * newNode = new nbvInspection::Node<StateVec>;
+      vsExploration::Node<StateVec> * newNode = new vsExploration::Node<StateVec>;
       newNode->state_ = newState;
       newNode->parent_ = newParent;
       newNode->distance_ = newParent->distance_ + direction.norm();
@@ -575,7 +564,7 @@ void nbvInspection::RrtTree::initialize(int numRuns)
       kd_insert3(kdTree_, newState.x(), newState.y(), newState.z(), newNode);
 
       // Display new node
-      publishNode(newNode, nbvInspection::NBVP_PLANLEVEL);
+      publishNode(newNode, vsExploration::NBVP_PLANLEVEL);
       //publishNode(newNode);
 
       // Update best IG and node if applicable
@@ -617,7 +606,7 @@ void nbvInspection::RrtTree::initialize(int numRuns)
   params_.inspectionPath_.publish(p);
 }
 
-bool nbvInspection::RrtTree::resampleBestEdge(double ext_ratio){
+bool vsExploration::RrtTree::resampleBestEdge(double ext_ratio){
 
   //double ext_ratio = 0;
   //plannerEvaluate(ext_ratio);
@@ -629,23 +618,20 @@ bool nbvInspection::RrtTree::resampleBestEdge(double ext_ratio){
     return false;
   }
 
-  nbvInspection::Node<StateVec> * targetNode = bestNode_;
+  vsExploration::Node<StateVec> * targetNode = bestNode_;
   if (targetNode->parent_ == NULL)
     return false;
 
   while (targetNode->parent_ != rootNode_ && targetNode->parent_ != NULL) {
     targetNode = targetNode->parent_;
   }
-  nbvInspection::Node<StateVec> * sourceNode = targetNode->parent_;
+  vsExploration::Node<StateVec> * sourceNode = targetNode->parent_;
 
   double dist = targetNode->distance_ - sourceNode->distance_;
   double dyaw = targetNode->state_[3] - sourceNode->state_[3];
   if (dyaw < -M_PI) dyaw += 2*M_PI;
   else if (dyaw > M_PI) dyaw -= 2*M_PI;
   dyaw = abs(dyaw);
-  // double t_exec = std::max(dyaw * params_.dt_ / params_.dyaw_max_),
-  //                          dist * params_.dt_ / params_.v_max_);
-  // double dist_allow = t_exec * params_.v_max_ / params_.dt_;
 
   // dt is cancelled out
   double t_exec = std::max(dyaw / params_.dyaw_max_, dist / params_.v_max_);
@@ -654,11 +640,11 @@ bool nbvInspection::RrtTree::resampleBestEdge(double ext_ratio){
   ext_ratio = ext_ratio * dist_allow / dist;
   ext_ratio = (ext_ratio <= params_.extend_ratio_max_) ? ext_ratio : params_.extend_ratio_max_;
 
-  ROS_INFO("Extend ratio (after checking the dynamics) : %f", ext_ratio);
+  ROS_INFO("Extend ratio (after checking the time budget) : %f", ext_ratio);
   return connect(sourceNode, targetNode, ext_ratio);
 }
 
-void nbvInspection::RrtTree::plannerEvaluate(double &extend_ratio){
+void vsExploration::RrtTree::plannerEvaluate(double &extend_ratio){
   /*------------------------------------
   * Compute the acceptable extend_ratio (testing)
   -----------------------------------*/
@@ -752,8 +738,8 @@ void nbvInspection::RrtTree::plannerEvaluate(double &extend_ratio){
   ROS_INFO("Extend ratio       : %f", extend_ratio);
 }
 
-void nbvInspection::RrtTree::setHardTarget(std::vector<double> val){
-  nbvInspection::Node<StateVec> * targetNode = new nbvInspection::Node<StateVec>;
+void vsExploration::RrtTree::setHardTarget(std::vector<double> val){
+  vsExploration::Node<StateVec> * targetNode = new vsExploration::Node<StateVec>;
 
   targetNode->parent_ = rootNode_;
   targetNode->gain_ = 0;
@@ -764,16 +750,16 @@ void nbvInspection::RrtTree::setHardTarget(std::vector<double> val){
   targetNode->state_[2] = val[2];
   targetNode->state_[3] = val[3];
   rootNode_->children_.push_back(targetNode);
-  publishNode(targetNode, nbvInspection::NBVP_PLANLEVEL);
+  publishNode(targetNode, vsExploration::NBVP_PLANLEVEL);
 
   bestNode_ = targetNode;
 }
-int nbvInspection::RrtTree::getPlannerState(void){
+int vsExploration::RrtTree::getPlannerState(void){
   return params_.planner_state_;
 }
 
-bool nbvInspection::RrtTree::getBestVertex(std::vector<double> &vertex){
-  nbvInspection::Node<StateVec> *targetNode;
+bool vsExploration::RrtTree::getBestVertex(std::vector<double> &vertex){
+  vsExploration::Node<StateVec> *targetNode;
   targetNode = bestNode_;
   if (targetNode->parent_ == NULL)
     return false;
@@ -789,8 +775,8 @@ bool nbvInspection::RrtTree::getBestVertex(std::vector<double> &vertex){
 }
 
 // span a tree to search for feasible paths
-bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
-                                     nbvInspection::Node<StateVec> *targetNode,
+bool vsExploration::RrtTree::connect(vsExploration::Node<StateVec> *sourceNode,
+                                     vsExploration::Node<StateVec> *targetNode,
                                      double extend_ratio){
   //ROS_WARN("DEBUG: %f %f %f %f",  sourceNode->distance_, sourceNode->gain_, targetNode->distance_, targetNode->gain_);
   /*--------------------
@@ -802,7 +788,7 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
   sourceNode->distance_ = 0;
   sourceNode->children_.clear();
   // Endpoints of feasible branches
-  std::vector< nbvInspection::Node<StateVec>* > feasible_branch_ep;
+  std::vector< vsExploration::Node<StateVec>* > feasible_branch_ep;
   feasible_branch_ep.clear();
   // Tree data structure
   kdSubTree_ = kd_create(3);
@@ -823,7 +809,7 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
                                  (targetNode->state_.z()+sourceNode->state_.z())/2.0);
   double shortest_dist = shortest_path.norm();
   float dist_limit = extend_ratio * shortest_dist;
-  if (dist_limit < params_.bspReplanningDistanceMin_) {
+  if (dist_limit < params_.vseReplanningDistanceMin_) {
     ROS_WARN("Too short for 2nd layer, just ignore: %f(m)", dist_limit);
     return false;
   }
@@ -972,7 +958,7 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
     //ROS_INFO("RRT number of sampling points True: %d, False: %d", count_true, count_false);
     if (count_true > 10000){
       // this is because the robot is outside its workspace and can not find a feasible path to come back
-      // just do the first layer
+      // just execute the first layer
       ROS_WARN("Cannot resample new path. Status: [%d] nodes and [%d] branches", node_counter, feasible_branch_counter);
       return false;
     }
@@ -989,13 +975,13 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
         kd_res_free(nearest);
         continue;
       }
-      nbvInspection::Node<StateVec> * parent_node = NULL;
-      parent_node = (nbvInspection::Node<StateVec> *) kd_res_item_data(nearest);
+      vsExploration::Node<StateVec> * parent_node = NULL;
+      parent_node = (vsExploration::Node<StateVec> *) kd_res_item_data(nearest);
       kd_res_free(nearest);
       Eigen::Vector3d edge(rand_state[0] - parent_node->state_[0],
                            rand_state[1] - parent_node->state_[1],
                            rand_state[2] - parent_node->state_[2]);
-      double replanning_extension_range = params_.bspReplanningExtensionRatio_* 2 * ellipse_radius.x();
+      double replanning_extension_range = params_.vseReplanningExtensionRatio_* 2 * ellipse_radius.x();
       if (edge.norm() > replanning_extension_range) {
         edge = replanning_extension_range * edge.normalized();
       }
@@ -1030,7 +1016,7 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
       }
 
       // Found one more qualified vertex
-      nbvInspection::Node<StateVec> * new_node = new nbvInspection::Node<StateVec>;
+      vsExploration::Node<StateVec> * new_node = new vsExploration::Node<StateVec>;
       new_node->state_ = vertex;
       new_node->parent_ = parent_node;
       new_node->distance_ = parent_node->distance_ + edge.norm();
@@ -1061,9 +1047,9 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
       }
       // Display new node
       // int nodeorder=0;
-      // publishNode(new_node, nbvInspection::BSP_PLANLEVEL, nodeorder);
+      // publishNode(new_node, vsExploration::BSP_PLANLEVEL, nodeorder);
       //publishNode(new_node);
-      //publishNode(new_node, nbvInspection::BSP_PLANLEVEL);
+      //publishNode(new_node, vsExploration::BSP_PLANLEVEL);
     }
   }
 
@@ -1082,7 +1068,7 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
   int feasible_branch_zero_gain = 0;
   int feasible_constraint_invalid = 0;
   int feasible_branch_node_counter = 0;
-  nbvInspection::Node<StateVec>* best_branch_ep;
+  vsExploration::Node<StateVec>* best_branch_ep;
   double best_branch_gain = 0;
 
   for (int i=0; i < feasible_branch_counter; i++ ){
@@ -1091,23 +1077,23 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
     * Trace backward the tree to evaluate each node
     ------------------------------------------------------*/
     int counter = 0;
-    nbvInspection::Node<StateVec> * end_node = feasible_branch_ep[i]; // end point of this branch
+    vsExploration::Node<StateVec> * end_node = feasible_branch_ep[i]; // end point of this branch
     // link to target first
     Eigen::Vector3d link_vertex(targetNode->state_[0] - end_node->state_[0],
                                 targetNode->state_[1] - end_node->state_[1],
                                 targetNode->state_[2] - end_node->state_[2]);
-    nbvInspection::Node<StateVec> * tgt_node = new nbvInspection::Node<StateVec>;
+    vsExploration::Node<StateVec> * tgt_node = new vsExploration::Node<StateVec>;
     tgt_node->state_ = targetNode->state_;
     tgt_node->parent_ = end_node;
     tgt_node->distance_ = end_node->distance_ + link_vertex.norm();
     tgt_node->gain_ = 0; // zero gain in target node means we don't care gain in this node
     //kd_insert3(kdSubTree_, tgt_node->state_.x(), tgt_node->state_.y(), tgt_node->state_.z(), tgt_node);
     tgt_node->parent_->children_.push_back(tgt_node); // make a copy
-    publishNode(tgt_node, nbvInspection::BSP_PLANLEVEL);
+    publishNode(tgt_node, vsExploration::BSP_PLANLEVEL);
     //ROS_INFO("Target: %f %f %f %f", tgt_node->state_[0], tgt_node->state_[1], tgt_node->state_[2], tgt_node->state_[3]);
-    nbvInspection::Node<StateVec> * node = tgt_node;
+    vsExploration::Node<StateVec> * node = tgt_node;
 
-    nbvInspection::Node<StateVec> * node_parent;
+    vsExploration::Node<StateVec> * node_parent;
     bool found_informative_branch = true;
     bool stop_tracing = false;
     // traceback step-by-step
@@ -1143,7 +1129,7 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
               }
               node_parent->state_[3] = best_yaw;
               node_parent->gain_  = best_gain;
-              publishNode(node_parent, nbvInspection::BSP_PLANLEVEL);
+              publishNode(node_parent, vsExploration::BSP_PLANLEVEL);
               // ROS_INFO("Node %d: %f %f %f %f", counter, node_parent->state_[0], node_parent->state_[1], node_parent->state_[2], node_parent->state_[3]);
             }else{
               // opp: this is a special node since it requires constraints from both side
@@ -1217,7 +1203,7 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
               if (found_orientation){
                 node_parent->state_[3] = best_yaw;
                 node_parent->gain_  = best_gain; // not accumulate
-                publishNode(node_parent, nbvInspection::BSP_PLANLEVEL);
+                publishNode(node_parent, vsExploration::BSP_PLANLEVEL);
                 stop_tracing = true;
               } else{
                 found_informative_branch = false;
@@ -1241,7 +1227,7 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
               stop_tracing = true;
             }else{
               // bad case: break a new branch
-              nbvInspection::Node<StateVec> * node_break = new nbvInspection::Node<StateVec>;
+              vsExploration::Node<StateVec> * node_break = new vsExploration::Node<StateVec>;
               node_break->state_ = node_parent->state_; //same state
               node_break->parent_ = node_parent->parent_; //same parent
               node_break->distance_ = node_parent->distance_;
@@ -1283,26 +1269,25 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
         best_branch_ep = tgt_node;
       }
     }else{
-      ROS_WARN("Failed");
       // infeasible path: discard it
       feasible_constraint_invalid++;
     }
   }
 
-  ROS_INFO("RRT: %d nodes with %d branches [%d nodes] \n[Valid: %d; Valid-but-zero-gain: %d; Invalid-due-to-constraint: %d]",
+  /*ROS_INFO("RRT: %d nodes with %d branches [%d nodes] \n[Valid: %d; Valid-but-zero-gain: %d; Invalid-due-to-constraint: %d]",
             node_counter,
             feasible_branch_counter,
             feasible_branch_node_counter,
             feasible_branch_valid_counter,
             feasible_branch_zero_gain,
             feasible_constraint_invalid );
-
+ */
   if (best_branch_gain > 0){
     bestNode_ = best_branch_ep;
     bestReGain_ = bestNode_->gain_;
     // Display new node
     int nodeorder=2;
-    publishNode(bestNode_, nbvInspection::BSP_PLANLEVEL, nodeorder);
+    publishNode(bestNode_, vsExploration::BSP_PLANLEVEL, nodeorder);
     ROS_INFO("The best branch with gain %f :)", bestNode_->gain_);
     return true;
   }else if (feasible_branch_valid_counter){
@@ -1314,23 +1299,23 @@ bool nbvInspection::RrtTree::connect(nbvInspection::Node<StateVec> *sourceNode,
   }
 }
 
-void nbvInspection::RrtTree::publishBestPath(nbvInspection::PlanningLevel planninglevel)
+void vsExploration::RrtTree::publishBestPath(vsExploration::PlanningLevel planninglevel)
 {
-  nbvInspection::Node<StateVec> * node = bestNode_;
+  vsExploration::Node<StateVec> * node = bestNode_;
   while (node != rootNode_ && node->parent_ != NULL) {
     const ros::Duration lifetime(params_.bestPlanMarker_lifetime_);
     visualization_msgs::Marker p;
 
     p.header.stamp = ros::Time::now();
-    if ((planninglevel == nbvInspection::NBVP_PLANLEVEL) ||
-        (planninglevel == nbvInspection::SAL_PLANLEVEL)){
+    if ((planninglevel == vsExploration::NBVP_PLANLEVEL) ||
+        (planninglevel == vsExploration::SAL_PLANLEVEL)){
       p.header.seq = g_ID_;
     }
-    else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+    else if (planninglevel == vsExploration::BSP_PLANLEVEL){
       p.header.seq = g_ID_r_;
     }
     else{
-      ROS_WARN("bsp_planner(publishNode): Invalid nbvInspection::PlanningLevel.");
+      ROS_WARN("planner(publishNode): Invalid vsExploration::PlanningLevel.");
       return;
     }
     p.header.frame_id = params_.navigationFrame_;
@@ -1338,12 +1323,12 @@ void nbvInspection::RrtTree::publishBestPath(nbvInspection::PlanningLevel planni
     unsigned int markerlevel  = static_cast<unsigned int>(planninglevel);
 
     //Orientations
-    if ((planninglevel == nbvInspection::NBVP_PLANLEVEL) ||
-        (planninglevel == nbvInspection::SAL_PLANLEVEL)){
+    if ((planninglevel == vsExploration::NBVP_PLANLEVEL) ||
+        (planninglevel == vsExploration::SAL_PLANLEVEL)){
       p.id = g_ID_;
       g_ID_++;
     }
-    else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+    else if (planninglevel == vsExploration::BSP_PLANLEVEL){
       p.id = g_ID_r_;
       g_ID_r_++;
     }
@@ -1366,18 +1351,18 @@ void nbvInspection::RrtTree::publishBestPath(nbvInspection::PlanningLevel planni
     p.color.a = 1.0;
     p.lifetime = lifetime;
     p.frame_locked = false;
-    if (planninglevel == nbvInspection::NBVP_PLANLEVEL){
+    if (planninglevel == vsExploration::NBVP_PLANLEVEL){
       p.color.r = 0.75;
       p.color.g = 0.75;
       p.color.b = 0.0;
       params_.bestPlanningPath_markers_.markers.push_back(p);
-    }else if (planninglevel == nbvInspection::SAL_PLANLEVEL){
+    }else if (planninglevel == vsExploration::SAL_PLANLEVEL){
       p.color.r = 0.0;
       p.color.g = 0.75;
       p.color.b = 0.0;
       params_.bestPlanningPath_markers_.markers.push_back(p);
     }
-    else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+    else if (planninglevel == vsExploration::BSP_PLANLEVEL){
       p.color.r = 0.0;
       p.color.g = 0.75;
       p.color.b = 0.0;
@@ -1388,12 +1373,12 @@ void nbvInspection::RrtTree::publishBestPath(nbvInspection::PlanningLevel planni
       break;
 
     //Positions
-    if ((planninglevel == nbvInspection::NBVP_PLANLEVEL) ||
-        (planninglevel == nbvInspection::SAL_PLANLEVEL)){
+    if ((planninglevel == vsExploration::NBVP_PLANLEVEL) ||
+        (planninglevel == vsExploration::SAL_PLANLEVEL)){
       p.id = g_ID_;
       g_ID_++;
     }
-    else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+    else if (planninglevel == vsExploration::BSP_PLANLEVEL){
       p.id = g_ID_r_;
       g_ID_r_++;
     }
@@ -1420,18 +1405,18 @@ void nbvInspection::RrtTree::publishBestPath(nbvInspection::PlanningLevel planni
     p.color.a = 1.0;
     p.lifetime = lifetime;
     p.frame_locked = false;
-    if (planninglevel == nbvInspection::NBVP_PLANLEVEL){
+    if (planninglevel == vsExploration::NBVP_PLANLEVEL){
       p.color.r = 0.0;
       p.color.g = 0.75;
       p.color.b = 0.75;
       params_.bestPlanningPath_markers_.markers.push_back(p);
-    }else if (planninglevel == nbvInspection::SAL_PLANLEVEL){
+    }else if (planninglevel == vsExploration::SAL_PLANLEVEL){
       p.color.r = 0.5;
       p.color.g = 0.0;
       p.color.b = 0;
       params_.bestPlanningPath_markers_.markers.push_back(p);
     }
-    else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+    else if (planninglevel == vsExploration::BSP_PLANLEVEL){
       p.color.r = 0.5;
       p.color.g = 0.0;
       p.color.b = 0;
@@ -1441,21 +1426,21 @@ void nbvInspection::RrtTree::publishBestPath(nbvInspection::PlanningLevel planni
     node = node->parent_;
   }
 
-  if ((planninglevel == nbvInspection::NBVP_PLANLEVEL) ||
-     (planninglevel == nbvInspection::SAL_PLANLEVEL)){
+  if ((planninglevel == vsExploration::NBVP_PLANLEVEL) ||
+     (planninglevel == vsExploration::SAL_PLANLEVEL)){
     params_.bestPlanningPath_.publish(params_.bestPlanningPath_markers_);
   }
-  else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+  else if (planninglevel == vsExploration::BSP_PLANLEVEL){
     params_.bestRePlanningPath_.publish(params_.bestRePlanningPath_markers_);
   }
 }
 
-std::vector<geometry_msgs::Pose> nbvInspection::RrtTree::getBestBranch(std::string targetFrame)
+std::vector<geometry_msgs::Pose> vsExploration::RrtTree::getBestBranch(std::string targetFrame)
 {
   //Bsp: Returns the complete best branch
   //ROS_INFO("Best branch:");
   std::vector<geometry_msgs::Pose> ret, ret_edge;
-  nbvInspection::Node<StateVec> * current = bestNode_;
+  vsExploration::Node<StateVec> * current = bestNode_;
   if (current->parent_ != NULL) {
     while (current->parent_ != rootNode_ && current->parent_ != NULL) {
       ret_edge = samplePath(current->parent_->state_, current->state_, targetFrame);
@@ -1470,7 +1455,7 @@ std::vector<geometry_msgs::Pose> nbvInspection::RrtTree::getBestBranch(std::stri
   return ret;
 }
 
-void nbvInspection::RrtTree::setCamModel(image_geometry::PinholeCameraModel& camInfo){
+void vsExploration::RrtTree::setCamModel(image_geometry::PinholeCameraModel& camInfo){
   if (cam_model_ready_) return;
   ROS_WARN("got camera model..");
   cam_model_ = camInfo;
@@ -1479,7 +1464,7 @@ void nbvInspection::RrtTree::setCamModel(image_geometry::PinholeCameraModel& cam
   cam_model_ready_ = true;
 }
 
-double nbvInspection::RrtTree::curiousGain(StateVec state)
+double vsExploration::RrtTree::curiousGain(StateVec state)
 {
   // This function computes the gain
   double gain = 0.0;
@@ -1552,7 +1537,7 @@ double nbvInspection::RrtTree::curiousGain(StateVec state)
 
 
 
-void nbvInspection::RrtTree::updateToEval(ros::Time time_stamp){
+void vsExploration::RrtTree::updateToEval(ros::Time time_stamp){
   clock_t begin_time = clock();
 
   // Get latest transform to the planning frame and transform the pose
@@ -1629,10 +1614,10 @@ void nbvInspection::RrtTree::updateToEval(ros::Time time_stamp){
   //std::cout << "Viewpoint: " << count << std::endl;
 }
 
-std::vector<geometry_msgs::Pose> nbvInspection::RrtTree::getBestEdge(std::string targetFrame){
+std::vector<geometry_msgs::Pose> vsExploration::RrtTree::getBestEdge(std::string targetFrame){
   // This function returns the first edge of the best branch
   std::vector<geometry_msgs::Pose> ret;
-  nbvInspection::Node<StateVec> * current = bestNode_;
+  vsExploration::Node<StateVec> * current = bestNode_;
   if (current->parent_ != NULL) {
     while (current->parent_ != rootNode_ && current->parent_ != NULL) {
       current = current->parent_;
@@ -1644,7 +1629,7 @@ std::vector<geometry_msgs::Pose> nbvInspection::RrtTree::getBestEdge(std::string
   return ret;
 }
 
-double nbvInspection::RrtTree::gain(StateVec state)
+double vsExploration::RrtTree::gain(StateVec state)
 {
 // This function computes the gain
   double gain = 0.0;
@@ -1734,7 +1719,7 @@ double nbvInspection::RrtTree::gain(StateVec state)
   return gain;
 }
 
-std::vector<geometry_msgs::Pose> nbvInspection::RrtTree::getPathBackToPrevious(
+std::vector<geometry_msgs::Pose> vsExploration::RrtTree::getPathBackToPrevious(
     std::string targetFrame)
 {
   std::vector<geometry_msgs::Pose> ret;
@@ -1746,7 +1731,7 @@ std::vector<geometry_msgs::Pose> nbvInspection::RrtTree::getPathBackToPrevious(
   return ret;
 }
 
-void nbvInspection::RrtTree::memorizeBestBranch()
+void vsExploration::RrtTree::memorizeBestBranch()
 {
   bestBranchMemory_.clear();
   Node<StateVec> * current = bestNode_;
@@ -1756,7 +1741,7 @@ void nbvInspection::RrtTree::memorizeBestBranch()
   }
 }
 
-void nbvInspection::RrtTree::clear()
+void vsExploration::RrtTree::clear()
 {
   delete rootNode_;
   rootNode_ = NULL;
@@ -1779,23 +1764,23 @@ void nbvInspection::RrtTree::clear()
 }
 
 
-void nbvInspection::RrtTree::publishPath(nbvInspection::PlanningLevel planninglevel)
+void vsExploration::RrtTree::publishPath(vsExploration::PlanningLevel planninglevel)
 {
-  if ((planninglevel==nbvInspection::PlanningLevel::NBVP_PLANLEVEL) ||
-      (planninglevel==nbvInspection::PlanningLevel::SAL_PLANLEVEL)){
+  if ((planninglevel==vsExploration::PlanningLevel::NBVP_PLANLEVEL) ||
+      (planninglevel==vsExploration::PlanningLevel::SAL_PLANLEVEL)){
     params_.planningPath_.publish(params_.planningPath_markers_);
     params_.planningPathStats_.publish(params_.planningPathStats_markers_);
   }
-  else if (planninglevel==nbvInspection::PlanningLevel::BSP_PLANLEVEL){
+  else if (planninglevel==vsExploration::PlanningLevel::BSP_PLANLEVEL){
     params_.rePlanningPath_.publish(params_.rePlanningPath_markers_);
     params_.rePlanningPathStats_.publish(params_.rePlanningPathStats_markers_);
   }
   else{
-    ROS_WARN("bsp_planner(publishPath): Invalid nbvInspection::PlanningLevel.");
+    ROS_WARN("planner(publishPath): Invalid vsExploration::PlanningLevel.");
   }
 }
 
-void nbvInspection::RrtTree::publishNode_old(Node<StateVec> * node)
+void vsExploration::RrtTree::publishNode_old(Node<StateVec> * node)
 {
   visualization_msgs::Marker p;
   p.header.stamp = ros::Time::now();
@@ -1879,19 +1864,19 @@ std::string to_string_with_precision(const T a_value, const int n = 6)
     return out.str();
 }
 
-void nbvInspection::RrtTree::publishNode(Node<StateVec> * node, nbvInspection::PlanningLevel planninglevel, int nodeorder)
+void vsExploration::RrtTree::publishNode(Node<StateVec> * node, vsExploration::PlanningLevel planninglevel, int nodeorder)
 {
   const ros::Duration lifetime(params_.planMarker_lifetime_);
   visualization_msgs::Marker p;
 
   p.header.stamp = ros::Time::now();
-  if ((planninglevel == nbvInspection::NBVP_PLANLEVEL) ||
-      (planninglevel == nbvInspection::SAL_PLANLEVEL)){
+  if ((planninglevel == vsExploration::NBVP_PLANLEVEL) ||
+      (planninglevel == vsExploration::SAL_PLANLEVEL)){
     p.header.seq = g_ID_;
-  } else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+  } else if (planninglevel == vsExploration::BSP_PLANLEVEL){
     p.header.seq = g_ID_r_;
   } else{
-    ROS_WARN("bsp_planner(publishNode): Invalid nbvInspection::PlanningLevel.");
+    ROS_WARN("planner(publishNode): Invalid vsExploration::PlanningLevel.");
     return;
   }
   p.header.frame_id = params_.navigationFrame_;
@@ -1899,11 +1884,11 @@ void nbvInspection::RrtTree::publishNode(Node<StateVec> * node, nbvInspection::P
   unsigned int markerlevel  = static_cast<unsigned int>(planninglevel);
 
   //Orientations
-  if ((planninglevel == nbvInspection::NBVP_PLANLEVEL) ||
-      (planninglevel == nbvInspection::SAL_PLANLEVEL)){
+  if ((planninglevel == vsExploration::NBVP_PLANLEVEL) ||
+      (planninglevel == vsExploration::SAL_PLANLEVEL)){
     p.id = g_ID_;
     g_ID_++;
-  } else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+  } else if (planninglevel == vsExploration::BSP_PLANLEVEL){
     p.id = g_ID_r_;
     g_ID_r_++;
   }
@@ -1925,17 +1910,17 @@ void nbvInspection::RrtTree::publishNode(Node<StateVec> * node, nbvInspection::P
   p.color.a = 1.0;
   p.lifetime = lifetime;
   p.frame_locked = false;
-  if (planninglevel == nbvInspection::NBVP_PLANLEVEL){
+  if (planninglevel == vsExploration::NBVP_PLANLEVEL){
     p.color.r = 0.75;
     p.color.g = 0.75;
     p.color.b = 0.0;
     params_.planningPath_markers_.markers.push_back(p);
-  } else if (planninglevel == nbvInspection::SAL_PLANLEVEL){
+  } else if (planninglevel == vsExploration::SAL_PLANLEVEL){
     p.color.r = 0.0;
     p.color.g = 0.75;
     p.color.b = 0.0;
     params_.planningPath_markers_.markers.push_back(p);
-  } else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+  } else if (planninglevel == vsExploration::BSP_PLANLEVEL){
     p.color.r = 0.0;
     p.color.g = 0.75;
     p.color.b = 0.0;
@@ -1943,8 +1928,8 @@ void nbvInspection::RrtTree::publishNode(Node<StateVec> * node, nbvInspection::P
   }
 
   double p_text_scale = 0.1;
-  if ((planninglevel == nbvInspection::NBVP_PLANLEVEL) ||
-      (planninglevel == nbvInspection::SAL_PLANLEVEL)){
+  if ((planninglevel == vsExploration::NBVP_PLANLEVEL) ||
+      (planninglevel == vsExploration::SAL_PLANLEVEL)){
     //Numbers
     unsigned int p_tot = node->unmapped_cnt_+node->occupied_cnt_+node->free_cnt_;
 
@@ -2061,7 +2046,7 @@ void nbvInspection::RrtTree::publishNode(Node<StateVec> * node, nbvInspection::P
     p.text = std::to_string(node->occupied_cnt_);
     params_.planningPathStats_markers_.markers.push_back(p);
   }
-  else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+  else if (planninglevel == vsExploration::BSP_PLANLEVEL){
     p.id = g_ID_Sr_;
     g_ID_Sr_++;
     p.ns = "vp_reconnection"; //reconnection:=WhiteAlpha
@@ -2127,12 +2112,12 @@ void nbvInspection::RrtTree::publishNode(Node<StateVec> * node, nbvInspection::P
     return;
 
   //Positions
-  if ((planninglevel == nbvInspection::NBVP_PLANLEVEL) ||
-      (planninglevel == nbvInspection::SAL_PLANLEVEL)){
+  if ((planninglevel == vsExploration::NBVP_PLANLEVEL) ||
+      (planninglevel == vsExploration::SAL_PLANLEVEL)){
     p.id = g_ID_;
     g_ID_++;
   }
-  else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+  else if (planninglevel == vsExploration::BSP_PLANLEVEL){
     p.id = g_ID_r_;
     g_ID_r_++;
   }
@@ -2159,18 +2144,18 @@ void nbvInspection::RrtTree::publishNode(Node<StateVec> * node, nbvInspection::P
   p.color.a = 1.0;
   p.lifetime = lifetime;
   p.frame_locked = false;
-  if (planninglevel == nbvInspection::NBVP_PLANLEVEL){
+  if (planninglevel == vsExploration::NBVP_PLANLEVEL){
     p.color.r = 0.0;
     p.color.g = 0.0;
     p.color.b = 0.75;
     params_.planningPath_markers_.markers.push_back(p);
-  }else if (planninglevel == nbvInspection::SAL_PLANLEVEL){
+  }else if (planninglevel == vsExploration::SAL_PLANLEVEL){
     p.color.r = 0.75;
     p.color.g = 0.0;
     p.color.b = 0.0;
     params_.planningPath_markers_.markers.push_back(p);
   }
-  else if (planninglevel == nbvInspection::BSP_PLANLEVEL){
+  else if (planninglevel == vsExploration::BSP_PLANLEVEL){
     p.color.r = 0.75;
     p.color.g = 0.0;
     p.color.b = 0.0;
@@ -2180,7 +2165,7 @@ void nbvInspection::RrtTree::publishNode(Node<StateVec> * node, nbvInspection::P
 
 
 
-std::vector<geometry_msgs::Pose> nbvInspection::RrtTree::samplePath(StateVec start, StateVec end,
+std::vector<geometry_msgs::Pose> vsExploration::RrtTree::samplePath(StateVec start, StateVec end,
                                                                     std::string targetFrame)
 {
   std::vector<geometry_msgs::Pose> ret;
@@ -2245,7 +2230,7 @@ std::vector<geometry_msgs::Pose> nbvInspection::RrtTree::samplePath(StateVec sta
   return ret;
 }
 
-// std::vector<geometry_msgs::Pose> nbvInspection::RrtTree::samplePath(StateVec start, StateVec end,
+// std::vector<geometry_msgs::Pose> vsExploration::RrtTree::samplePath(StateVec start, StateVec end,
 //                                                                     std::string targetFrame)
 // {
 //   std::vector<geometry_msgs::Pose> ret;

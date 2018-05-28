@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
+ /*
+ * Modified by Tung Dang, University of Nevada, Reno.
+ * The provided code is an implementation of the visual saliency-aware
+ * exploration algorithm.
+ */
+
 #ifndef NBVP_HPP_
 #define NBVP_HPP_
 
@@ -25,7 +31,7 @@
 
 #include <visualization_msgs/Marker.h>
 
-#include <nbvplanner/nbvp.h>
+#include <vseplanner/vsep.h>
 
 // Convenience macro to get the absolute yaw difference
 #define ANGABS(x) (fmod(fabs(x),2.0*M_PI)<M_PI?fmod(fabs(x),2.0*M_PI):2.0*M_PI-fmod(fabs(x),2.0*M_PI))
@@ -33,7 +39,7 @@
 using namespace Eigen;
 
 template<typename stateVec>
-nbvInspection::nbvPlanner<stateVec>::nbvPlanner(const ros::NodeHandle& nh,
+vsExploration::vsePlanner<stateVec>::vsePlanner(const ros::NodeHandle& nh,
                                                 const ros::NodeHandle& nh_private)
     : nh_(nh),
       nh_private_(nh_private)
@@ -51,29 +57,29 @@ nbvInspection::nbvPlanner<stateVec>::nbvPlanner(const ros::NodeHandle& nh,
 
   // Set up the topics and services
   params_.inspectionPath_ = nh_.advertise<visualization_msgs::Marker>("inspectionPath", 1000);
-  plannerService_ = nh_.advertiseService("nbvplanner",
-                                         &nbvInspection::nbvPlanner<stateVec>::plannerCallback,
+  plannerService_ = nh_.advertiseService("vseplanner",
+                                         &vsExploration::vsePlanner<stateVec>::plannerCallback,
                                          this);
-  saveMapClient_ = nh_.serviceClient<volumetric_msgs::SaveMap> ("/firefly/nbvPlanner/save_map");
+  saveMapClient_ = nh_.serviceClient<volumetric_msgs::SaveMap> ("vsePlanner/save_map");
 
   plannerPub_ = nh_.advertise<nav_msgs::Path>("planner_path", 1000);
 
-  posClient_ = nh_.subscribe("pose", 10, &nbvInspection::nbvPlanner<stateVec>::posCallback, this);
-  odomClient_ = nh_.subscribe("odometry", 10, &nbvInspection::nbvPlanner<stateVec>::odomCallback, this);
+  posClient_ = nh_.subscribe("pose", 10, &vsExploration::vsePlanner<stateVec>::posCallback, this);
+  odomClient_ = nh_.subscribe("odometry", 10, &vsExploration::vsePlanner<stateVec>::odomCallback, this);
 
   pointcloud_sub_ = nh_.subscribe("pointcloud_throttled", 1,
-                                  &nbvInspection::nbvPlanner<stateVec>::insertPointcloudWithTf,
+                                  &vsExploration::vsePlanner<stateVec>::insertPointcloudWithTf,
                                   this);
   pointcloud_sub_cam_up_ = nh_.subscribe(
       "pointcloud_throttled_up", 1,
-      &nbvInspection::nbvPlanner<stateVec>::insertPointcloudWithTfCamUp, this);
+      &vsExploration::vsePlanner<stateVec>::insertPointcloudWithTfCamUp, this);
   pointcloud_sub_cam_down_ = nh_.subscribe(
       "pointcloud_throttled_down", 1,
-      &nbvInspection::nbvPlanner<stateVec>::insertPointcloudWithTfCamDown, this);
+      &vsExploration::vsePlanner<stateVec>::insertPointcloudWithTfCamDown, this);
 
   image_transport::ImageTransport it(nh_);
-  subCam = it.subscribe("image_saliency", 1,  &nbvInspection::nbvPlanner<stateVec>::camCallback, this );
-  subCamInfo = nh_.subscribe("image_info", 2, &nbvInspection::nbvPlanner<stateVec>::camInfoCallback, this );
+  subCam = it.subscribe("image_saliency", 1,  &vsExploration::vsePlanner<stateVec>::camCallback, this );
+  subCamInfo = nh_.subscribe("image_info", 2, &vsExploration::vsePlanner<stateVec>::camInfoCallback, this );
 
   if (!setParams()) {
     ROS_ERROR("Could not start the planner. Parameters missing!");
@@ -133,11 +139,11 @@ nbvInspection::nbvPlanner<stateVec>::nbvPlanner(const ros::NodeHandle& nh,
   tree_ = new RrtTree(mesh_, manager_);
   tree_->setParams(params_);
   peerPosClient1_ = nh_.subscribe("peer_pose_1", 10,
-                                  &nbvInspection::RrtTree::setPeerStateFromPoseMsg1, tree_);
+                                  &vsExploration::RrtTree::setPeerStateFromPoseMsg1, tree_);
   peerPosClient2_ = nh_.subscribe("peer_pose_2", 10,
-                                  &nbvInspection::RrtTree::setPeerStateFromPoseMsg2, tree_);
+                                  &vsExploration::RrtTree::setPeerStateFromPoseMsg2, tree_);
   peerPosClient3_ = nh_.subscribe("peer_pose_3", 10,
-                                  &nbvInspection::RrtTree::setPeerStateFromPoseMsg3, tree_);
+                                  &vsExploration::RrtTree::setPeerStateFromPoseMsg3, tree_);
   // Not yet initialized.
   params_.planner_state_ = PSTATE_NONE;
   // Not yet ready. Needs a position message first.
@@ -146,7 +152,7 @@ nbvInspection::nbvPlanner<stateVec>::nbvPlanner(const ros::NodeHandle& nh,
 }
 
 template<typename stateVec>
-nbvInspection::nbvPlanner<stateVec>::~nbvPlanner()
+vsExploration::vsePlanner<stateVec>::~vsePlanner()
 {
   if (manager_) {
     delete manager_;
@@ -157,7 +163,7 @@ nbvInspection::nbvPlanner<stateVec>::~nbvPlanner()
 }
 
 template<typename stateVec>
-void nbvInspection::nbvPlanner<stateVec>::posCallback(
+void vsExploration::vsePlanner<stateVec>::posCallback(
     const geometry_msgs::PoseWithCovarianceStamped& pose)
 {
   tree_->setStateFromPoseMsg(pose);
@@ -170,7 +176,7 @@ void nbvInspection::nbvPlanner<stateVec>::posCallback(
 }
 
 template<typename stateVec>
-void nbvInspection::nbvPlanner<stateVec>::odomCallback(
+void vsExploration::vsePlanner<stateVec>::odomCallback(
     const nav_msgs::Odometry& pose)
 {
   tree_->setStateFromOdometryMsg(pose);
@@ -183,8 +189,8 @@ void nbvInspection::nbvPlanner<stateVec>::odomCallback(
 }
 
 template<typename stateVec>
-bool nbvInspection::nbvPlanner<stateVec>::plannerCallback(nbvplanner::nbvp_srv::Request& req,
-                                                          nbvplanner::nbvp_srv::Response& res)
+bool vsExploration::vsePlanner<stateVec>::plannerCallback(vseplanner::vsep_srv::Request& req,
+                                                          vseplanner::vsep_srv::Response& res)
 {
   ros::Time computationTime = ros::Time::now();
   // Check that planner is ready to compute path.
@@ -232,7 +238,7 @@ bool nbvInspection::nbvPlanner<stateVec>::plannerCallback(nbvplanner::nbvp_srv::
       break;
     }
     if (loopCount > 1000 * (tree_->getCounter() + 1)) {
-      ROS_WARN("bsp_planner<iterate>: Exceeding maximum failed iterations, return to previous point!");
+      ROS_WARN("planner<iterate>: Exceeding maximum failed iterations, return to previous point!");
       res.path = tree_->getPathBackToPrevious(req.header.frame_id);
       brkflag =  true;
       break;
@@ -249,10 +255,10 @@ bool nbvInspection::nbvPlanner<stateVec>::plannerCallback(nbvplanner::nbvp_srv::
   // Resample first vertex of NBVP planning level
   if (planner_mode != 2){
     if (tree_->resampleFirstVertex(num_runs_)){
-      ROS_INFO_STREAM("nbv_planner(resampleFirstVertex): SUCCESS");
+      ROS_INFO_STREAM("planner(resampleFirstVertex): SUCCESS");
     }
     else{
-      ROS_INFO_STREAM("nvb_planner(resampleFirstVertex): Failed to improve...");
+      ROS_INFO_STREAM("planner(resampleFirstVertex): Failed to improve...");
     }
   }
 
@@ -313,14 +319,14 @@ bool nbvInspection::nbvPlanner<stateVec>::plannerCallback(nbvplanner::nbvp_srv::
     }
     plannerPub_.publish( planner_path );
   }else{
-    ROS_WARN("nbvPlanner: No path computed...");
+    ROS_WARN("vsePlanner: No path computed...");
   }
 
   return true;
 }
 
 template<typename stateVec>
-void nbvInspection::nbvPlanner<stateVec>::camInfoCallback(
+void vsExploration::vsePlanner<stateVec>::camInfoCallback(
     const sensor_msgs::CameraInfoConstPtr& camInfoIn)
 {
   if (CamInfoReady) return;
@@ -334,7 +340,7 @@ void nbvInspection::nbvPlanner<stateVec>::camInfoCallback(
 }
 
 template<typename stateVec>
-void nbvInspection::nbvPlanner<stateVec>::camCallback(
+void vsExploration::vsePlanner<stateVec>::camCallback(
     const sensor_msgs::ImageConstPtr& camIn)
 {
   if (!CamInfoReady) return;
@@ -353,7 +359,7 @@ void nbvInspection::nbvPlanner<stateVec>::camCallback(
 }
 
 template<typename stateVec>
-bool nbvInspection::nbvPlanner<stateVec>::setParams()
+bool vsExploration::vsePlanner<stateVec>::setParams()
 {
   std::string ns = ros::this_node::getName();
   bool ret = true;
@@ -392,67 +398,67 @@ bool nbvInspection::nbvPlanner<stateVec>::setParams()
     params_.camVertical_ = {60.0};
   }
   params_.igProbabilistic_ = 0.0;
-  if (!ros::param::get(ns + "/nbvp/gain/probabilistic", params_.igProbabilistic_)) {
+  if (!ros::param::get(ns + "/vsep/gain/probabilistic", params_.igProbabilistic_)) {
     ROS_WARN(
         "No gain coefficient for probability of cells specified. Looking for %s. Default is 0.0.",
-        (ns + "/nbvp/gain/probabilistic").c_str());
+        (ns + "/vsep/gain/probabilistic").c_str());
   }
   params_.igFree_ = 0.0;
-  if (!ros::param::get(ns + "/nbvp/gain/free", params_.igFree_)) {
+  if (!ros::param::get(ns + "/vsep/gain/free", params_.igFree_)) {
     ROS_WARN("No gain coefficient for free cells specified. Looking for %s. Default is 0.0.",
-             (ns + "/nbvp/gain/free").c_str());
+             (ns + "/vsep/gain/free").c_str());
   }
   params_.igOccupied_ = 0.0;
-  if (!ros::param::get(ns + "/nbvp/gain/occupied", params_.igOccupied_)) {
+  if (!ros::param::get(ns + "/vsep/gain/occupied", params_.igOccupied_)) {
     ROS_WARN("No gain coefficient for occupied cells specified. Looking for %s. Default is 0.0.",
-             (ns + "/nbvp/gain/occupied").c_str());
+             (ns + "/vsep/gain/occupied").c_str());
   }
   params_.igUnmapped_ = 1.0;
-  if (!ros::param::get(ns + "/nbvp/gain/unmapped", params_.igUnmapped_)) {
+  if (!ros::param::get(ns + "/vsep/gain/unmapped", params_.igUnmapped_)) {
     ROS_WARN("No gain coefficient for unmapped cells specified. Looking for %s. Default is 1.0.",
-             (ns + "/nbvp/gain/unmapped").c_str());
+             (ns + "/vsep/gain/unmapped").c_str());
   }
   params_.igArea_ = 1.0;
-  if (!ros::param::get(ns + "/nbvp/gain/area", params_.igArea_)) {
+  if (!ros::param::get(ns + "/vsep/gain/area", params_.igArea_)) {
     ROS_WARN("No gain coefficient for mesh area specified. Looking for %s. Default is 1.0.",
-             (ns + "/nbvp/gain/area").c_str());
+             (ns + "/vsep/gain/area").c_str());
   }
   params_.degressiveSwitchoffLoops_ = 5;
-  if (!ros::param::get(ns + "/nbvp/gain/degressive_switchoffLoops", params_.degressiveSwitchoffLoops_)) {
+  if (!ros::param::get(ns + "/vsep/gain/degressive_switchoffLoops", params_.degressiveSwitchoffLoops_)) {
     ROS_WARN("No Loop counts for degressive factor for gain accumulation specified. Looking for %s. Default is 5.",
-             (ns + "/nbvp/gain/degressive_switchoffLoops").c_str());
+             (ns + "/vsep/gain/degressive_switchoffLoops").c_str());
   }
   params_.degressiveCoeff_ = 0.25;
-  if (!ros::param::get(ns + "/nbvp/gain/degressive_coeff", params_.degressiveCoeff_)) {
+  if (!ros::param::get(ns + "/vsep/gain/degressive_coeff", params_.degressiveCoeff_)) {
     ROS_WARN(
         "No degressive factor for gain accumulation specified. Looking for %s. Default is 0.25.",
-        (ns + "/nbvp/gain/degressive_coeff").c_str());
+        (ns + "/vsep/gain/degressive_coeff").c_str());
   }
   params_.extensionRange_ = 1.0;
-  if (!ros::param::get(ns + "/nbvp/tree/extension_range", params_.extensionRange_)) {
+  if (!ros::param::get(ns + "/vsep/tree/extension_range", params_.extensionRange_)) {
     ROS_WARN("No value for maximal extension range specified. Looking for %s. Default is 1.0m.",
-             (ns + "/nbvp/tree/extension_range").c_str());
+             (ns + "/vsep/tree/extension_range").c_str());
   }
   params_.initIterations_ = 15;
-  if (!ros::param::get(ns + "/nbvp/tree/initial_iterations", params_.initIterations_)) {
+  if (!ros::param::get(ns + "/vsep/tree/initial_iterations", params_.initIterations_)) {
     ROS_WARN("No number of initial tree iterations specified. Looking for %s. Default is 15.",
-             (ns + "/nbvp/tree/initial_iterations").c_str());
+             (ns + "/vsep/tree/initial_iterations").c_str());
   }
   params_.dt_ = 0.1;
-  if (!ros::param::get(ns + "/nbvp/dt", params_.dt_)) {
+  if (!ros::param::get(ns + "/vsep/dt", params_.dt_)) {
     ROS_WARN("No sampling time step specified. Looking for %s. Default is 0.1s.",
-             (ns + "/nbvp/dt").c_str());
+             (ns + "/vsep/dt").c_str());
   }
   params_.gainRange_ = 1.0;
-  if (!ros::param::get(ns + "/nbvp/gain/range", params_.gainRange_)) {
+  if (!ros::param::get(ns + "/vsep/gain/range", params_.gainRange_)) {
     ROS_WARN("No gain range specified. Looking for %s. Default is 1.0m.",
-             (ns + "/nbvp/gain/range").c_str());
+             (ns + "/vsep/gain/range").c_str());
   }
 
   params_.yaw_sampling_limit_ = 2 * M_PI; // 2pi: no limit
-  if (!ros::param::get(ns + "/nbvp/yaw_sampling_limit", params_.yaw_sampling_limit_)) {
+  if (!ros::param::get(ns + "/vsep/yaw_sampling_limit", params_.yaw_sampling_limit_)) {
     ROS_WARN("No yaw sampling limit specified. Looking for %s. Default is 2*PI.",
-             (ns + "/nbvp/yaw_sampling_limit").c_str());
+             (ns + "/vsep/yaw_sampling_limit").c_str());
   }
 
   if (!ros::param::get(ns + "/bbx/minX", params_.minX_)) {
@@ -526,14 +532,14 @@ bool nbvInspection::nbvPlanner<stateVec>::setParams()
     ROS_WARN("No z offset value specified. Looking for %s. Default is 0.0m.", (ns + "/system/bbx/z_offset").c_str());
   }
   params_.cutoffIterations_ = 200;
-  if (!ros::param::get(ns + "/nbvp/tree/cutoff_iterations", params_.cutoffIterations_)) {
+  if (!ros::param::get(ns + "/vsep/tree/cutoff_iterations", params_.cutoffIterations_)) {
     ROS_WARN("No cutoff iterations value specified. Looking for %s. Default is 200.",
-             (ns + "/nbvp/tree/cutoff_iterations").c_str());
+             (ns + "/vsep/tree/cutoff_iterations").c_str());
   }
   params_.zero_gain_ = 0.0;
-  if (!ros::param::get(ns + "/nbvp/gain/zero", params_.zero_gain_)) {
+  if (!ros::param::get(ns + "/vsep/gain/zero", params_.zero_gain_)) {
     ROS_WARN("No zero gain value specified. Looking for %s. Default is 0.0.",
-             (ns + "/nbvp/gain/zero").c_str());
+             (ns + "/vsep/gain/zero").c_str());
   }
   params_.dOvershoot_ = 0.5;
   if (!ros::param::get(ns + "/system/bbx/overshoot", params_.dOvershoot_)) {
@@ -542,13 +548,13 @@ bool nbvInspection::nbvPlanner<stateVec>::setParams()
         (ns + "/system/bbx/overshoot").c_str());
   }
   params_.log_ = false;
-  if (!ros::param::get(ns + "/nbvp/log/on", params_.log_)) {
-    ROS_WARN("Logging is off by default. Turn on with %s: true", (ns + "/nbvp/log/on").c_str());
+  if (!ros::param::get(ns + "/vsep/log/on", params_.log_)) {
+    ROS_WARN("Logging is off by default. Turn on with %s: true", (ns + "/vsep/log/on").c_str());
   }
   params_.log_throttle_ = 0.5;
-  if (!ros::param::get(ns + "/nbvp/log/throttle", params_.log_throttle_)) {
+  if (!ros::param::get(ns + "/vsep/log/throttle", params_.log_throttle_)) {
     ROS_WARN("No throttle time for logging specified. Looking for %s. Default is 0.5s.",
-             (ns + "/nbvp/log/throttle").c_str());
+             (ns + "/vsep/log/throttle").c_str());
   }
   params_.navigationFrame_ = "world";
   if (!ros::param::get(ns + "/tf_frame", params_.navigationFrame_)) {
@@ -575,102 +581,102 @@ bool nbvInspection::nbvPlanner<stateVec>::setParams()
         (ns + "/inspection_throttle").c_str());
   }
   params_.exact_root_ = true;
-  if (!ros::param::get(ns + "/nbvp/tree/exact_root", params_.exact_root_)) {
+  if (!ros::param::get(ns + "/vsep/tree/exact_root", params_.exact_root_)) {
     ROS_WARN("No option for exact root selection specified. Looking for %s. Default is true.",
-             (ns + "/nbvp/tree/exact_root").c_str());
+             (ns + "/vsep/tree/exact_root").c_str());
   }
 
   params_.softStart_ = true;
-  if (!ros::param::get(ns + "/nbvp/softStart", params_.softStart_)) {
+  if (!ros::param::get(ns + "/vsep/softStart", params_.softStart_)) {
     ROS_WARN("No option for soft starting (clearing a flight space of free cells until first successful iteration) specified. Looking for %s. Default is true.",
-             (ns + "/nbvp/softStart").c_str());
+             (ns + "/vsep/softStart").c_str());
   }
   params_.softStartMinZ_ = 0.0;
-  if (!ros::param::get(ns + "/nbvp/softStartMinZ", params_.softStartMinZ_)) {
+  if (!ros::param::get(ns + "/vsep/softStartMinZ", params_.softStartMinZ_)) {
     ROS_WARN("No option for soft starting MinZ (clearing a flight space of free cells only over this MinZ value) specified. Looking for %s. Default is 0.0.",
-             (ns + "/nbvp/softStartMinZ").c_str());
+             (ns + "/vsep/softStartMinZ").c_str());
   }
 
   params_.cuEnable_ = false;
   if (!ros::param::get(ns + "/vsep/curious_enable", params_.cuEnable_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.curious_range_ = 1.0;
   if (!ros::param::get(ns + "/vsep/curious_range", params_.curious_range_)) {
     ROS_WARN("No gain range specified. Looking for %s. Default is 1.0m.",
-             (ns + "/nbvp/gain/range").c_str());
+             (ns + "/vsep/gain/range").c_str());
   }
 
   params_.curious_coefficient_ = 1.0;
   if (!ros::param::get(ns + "/vsep/curious_coefficient", params_.curious_coefficient_)) {
     ROS_WARN("No gain range specified. Looking for %s. Default is 1.0m.",
-             (ns + "/nbvp/gain/range").c_str());
+             (ns + "/vsep/gain/range").c_str());
   }
 
   params_.branch_max_ = 10;
   if (!ros::param::get(ns + "/vsep/branch_max", params_.branch_max_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.node_max_ = 1000;
   if (!ros::param::get(ns + "/vsep/node_max", params_.node_max_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.extend_ratio_fixed_ = 1.5;
   if (!ros::param::get(ns + "/vsep/extend_ratio_fixed", params_.extend_ratio_fixed_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.extend_ratio_max_ = 1.5;
   if (!ros::param::get(ns + "/vsep/extend_ratio_max", params_.extend_ratio_max_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.exp_lower_bound_ = 0.2;
   if (!ros::param::get(ns + "/vsep/exp_lower_bound", params_.exp_lower_bound_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.exp_upper_bound_ = 0.9;
   if (!ros::param::get(ns + "/vsep/exp_upper_bound", params_.exp_upper_bound_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.exp_filter_window_ = 3;
   if (!ros::param::get(ns + "/vsep/exp_filter_window", params_.exp_filter_window_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.extend_enable_= false;
   if (!ros::param::get(ns + "/vsep/extend_enable", params_.extend_enable_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.time_budget_ = 1000.0;
   if (!ros::param::get(ns + "/vsep/time_budget", params_.time_budget_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.sal_ground_remove_level_ = -10.0;
   if (!ros::param::get(ns + "/vsep/sal_ground_remove_level", params_.sal_ground_remove_level_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
   params_.sal_wait_for_planner_  = false;
   if (!ros::param::get(ns + "/vsep/sal_wait_for_planner", params_.sal_wait_for_planner_)) {
-    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "nbvp/curious_enable").c_str());
+    ROS_WARN("Not specified whether activate 2nd layer or not. Looking for %s. Default is false", (ns + "vsep/curious_enable").c_str());
   }
 
-  params_.bspReplanningDistanceMin_ = 0.5;
-  if (!ros::param::get(ns + "/vsep/replanning_distance_min", params_.bspReplanningDistanceMin_)) {
-    ROS_WARN("No min distance threshold for Replanning step. Looking for %s. Default is 0.25.", (ns + "/bsp/replanning_distance_min").c_str());
+  params_.vseReplanningDistanceMin_ = 0.5;
+  if (!ros::param::get(ns + "/vsep/replanning_distance_min", params_.vseReplanningDistanceMin_)) {
+    ROS_WARN("No min distance threshold for Replanning step. Looking for %s. Default is 0.25.", (ns + "/vse/replanning_distance_min").c_str());
   }
 
-  params_.bspReplanningExtensionRatio_ = 0.5;
-  if (!ros::param::get(ns + "/vsep/replanning_extension_ratio", params_.bspReplanningExtensionRatio_)) {
-    ROS_WARN("No ratio for max extension range in Replanning step. Looking for %s. Default is 0.5.", (ns + "/bsp/replanning_extension_ratio").c_str());
+  params_.vseReplanningExtensionRatio_ = 0.5;
+  if (!ros::param::get(ns + "/vsep/replanning_extension_ratio", params_.vseReplanningExtensionRatio_)) {
+    ROS_WARN("No ratio for max extension range in Replanning step. Looking for %s. Default is 0.5.", (ns + "/vse/replanning_extension_ratio").c_str());
   }
 
   params_.planMarker_lifetime_ = 15.0;
@@ -711,7 +717,7 @@ bool nbvInspection::nbvPlanner<stateVec>::setParams()
 }
 
 template<typename stateVec>
-void nbvInspection::nbvPlanner<stateVec>::insertPointcloudWithTf(
+void vsExploration::vsePlanner<stateVec>::insertPointcloudWithTf(
     const sensor_msgs::PointCloud2::ConstPtr& pointcloud)
 {
   static double last = ros::Time::now().toSec();
@@ -730,7 +736,7 @@ void nbvInspection::nbvPlanner<stateVec>::insertPointcloudWithTf(
 }
 
 template<typename stateVec>
-void nbvInspection::nbvPlanner<stateVec>::insertPointcloudWithTfCamUp(
+void vsExploration::vsePlanner<stateVec>::insertPointcloudWithTfCamUp(
     const sensor_msgs::PointCloud2::ConstPtr& pointcloud)
 {
   static double last = ros::Time::now().toSec();
@@ -741,7 +747,7 @@ void nbvInspection::nbvPlanner<stateVec>::insertPointcloudWithTfCamUp(
 }
 
 template<typename stateVec>
-void nbvInspection::nbvPlanner<stateVec>::insertPointcloudWithTfCamDown(
+void vsExploration::vsePlanner<stateVec>::insertPointcloudWithTfCamDown(
     const sensor_msgs::PointCloud2::ConstPtr& pointcloud)
 {
   static double last = ros::Time::now().toSec();

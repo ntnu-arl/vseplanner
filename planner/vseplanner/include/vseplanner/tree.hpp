@@ -14,13 +14,19 @@
  * limitations under the License.
  */
 
+ /*
+ * Modified by Tung Dang, University of Nevada, Reno.
+ * The provided code is an implementation of the visual saliency-aware
+ * exploration algorithm.
+ */
+
 #ifndef TREE_HPP_
 #define TREE_HPP_
 
-#include <nbvplanner/tree.h>
+#include <vseplanner/tree.h>
 
 template<typename stateVec>
-nbvInspection::Node<stateVec>::Node()
+vsExploration::Node<stateVec>::Node()
 {
   parent_ = NULL;
   distance_ = DBL_MAX;
@@ -28,7 +34,7 @@ nbvInspection::Node<stateVec>::Node()
 }
 
 template<typename stateVec>
-nbvInspection::Node<stateVec>::~Node()
+vsExploration::Node<stateVec>::~Node()
 {
   for (typename std::vector<Node<stateVec> *>::iterator it = children_.begin();
       it != children_.end(); it++) {
@@ -38,7 +44,7 @@ nbvInspection::Node<stateVec>::~Node()
 }
 
 template<typename stateVec>
-nbvInspection::TreeBase<stateVec>::TreeBase()
+vsExploration::TreeBase<stateVec>::TreeBase()
 {
   bestGain_ = params_.zero_gain_;
   bestNode_ = NULL;
@@ -47,7 +53,7 @@ nbvInspection::TreeBase<stateVec>::TreeBase()
 }
 
 template<typename stateVec>
-nbvInspection::TreeBase<stateVec>::TreeBase(mesh::StlMesh * mesh,
+vsExploration::TreeBase<stateVec>::TreeBase(mesh::StlMesh * mesh,
                                             volumetric_mapping::OctomapManager * manager)
 {
   mesh_ = mesh;
@@ -59,33 +65,33 @@ nbvInspection::TreeBase<stateVec>::TreeBase(mesh::StlMesh * mesh,
 }
 
 template<typename stateVec>
-nbvInspection::TreeBase<stateVec>::~TreeBase()
+vsExploration::TreeBase<stateVec>::~TreeBase()
 {
 }
 
 template<typename stateVec>
-void nbvInspection::TreeBase<stateVec>::setPeerStateFromPoseMsg1(
+void vsExploration::TreeBase<stateVec>::setPeerStateFromPoseMsg1(
     const geometry_msgs::PoseWithCovarianceStamped& pose)
 {
   setPeerStateFromPoseMsg(pose, 1);
 }
 
 template<typename stateVec>
-void nbvInspection::TreeBase<stateVec>::setPeerStateFromPoseMsg2(
+void vsExploration::TreeBase<stateVec>::setPeerStateFromPoseMsg2(
     const geometry_msgs::PoseWithCovarianceStamped& pose)
 {
   setPeerStateFromPoseMsg(pose, 2);
 }
 
 template<typename stateVec>
-void nbvInspection::TreeBase<stateVec>::setPeerStateFromPoseMsg3(
+void vsExploration::TreeBase<stateVec>::setPeerStateFromPoseMsg3(
     const geometry_msgs::PoseWithCovarianceStamped& pose)
 {
   setPeerStateFromPoseMsg(pose, 3);
 }
 
 template<typename stateVec>
-void nbvInspection::TreeBase<stateVec>::setParams(Params params)
+void vsExploration::TreeBase<stateVec>::setParams(Params params)
 {
   params_ = params;
   // set size of the workspace (JAH)
@@ -104,46 +110,46 @@ void nbvInspection::TreeBase<stateVec>::setParams(Params params)
 }
 
 template<typename stateVec>
-int nbvInspection::TreeBase<stateVec>::getCounter()
+int vsExploration::TreeBase<stateVec>::getCounter()
 {
   return counter_;
 }
 
 template<typename stateVec>
-bool nbvInspection::TreeBase<stateVec>::gainFound()
+bool vsExploration::TreeBase<stateVec>::gainFound()
 {
   return bestGain_ > params_.zero_gain_;
 }
 
 template<typename stateVec>
-bool nbvInspection::TreeBase<stateVec>::reGainFound()
+bool vsExploration::TreeBase<stateVec>::reGainFound()
 {
   return bestReGain_ > initReGain_;
 }
 
 template<typename stateVec>
-void nbvInspection::TreeBase<stateVec>::insertPointcloudWithTf(
+void vsExploration::TreeBase<stateVec>::insertPointcloudWithTf(
     const sensor_msgs::PointCloud2::ConstPtr& pointcloud)
 {
   manager_->insertPointcloudWithTf(pointcloud);
 }
 
 template<typename stateVec>
-void nbvInspection::TreeBase<stateVec>::insertSaliencyImgWithTf(
+void vsExploration::TreeBase<stateVec>::insertSaliencyImgWithTf(
     const sensor_msgs::ImageConstPtr& img)
 {
   manager_->insertSaliencyImgWithTf(img);
 }
 
 template<typename stateVec>
-void nbvInspection::TreeBase<stateVec>::setCamInfo(
+void vsExploration::TreeBase<stateVec>::setCamInfo(
     image_geometry::PinholeCameraModel& camInfo)
 {
   manager_->setCamInfo(camInfo);
 }
 
 template<typename stateVec>
-void nbvInspection::TreeBase<stateVec>::clearTakeoffBBX(
+void vsExploration::TreeBase<stateVec>::clearTakeoffBBX(
     Eigen::Vector3d& boundingBox_
     )
 {
@@ -152,7 +158,7 @@ void nbvInspection::TreeBase<stateVec>::clearTakeoffBBX(
 }
 
 template<typename stateVec>
-void nbvInspection::TreeBase<stateVec>::clearRootStateBBX(
+void vsExploration::TreeBase<stateVec>::clearRootStateBBX(
     Eigen::Vector3d& boundingBox_,
     const double& minZ
     )
@@ -168,7 +174,7 @@ void nbvInspection::TreeBase<stateVec>::clearRootStateBBX(
 }
 
 template<typename stateVec>
-void nbvInspection::TreeBase<stateVec>::getRootState(
+void vsExploration::TreeBase<stateVec>::getRootState(
     Eigen::Vector3d& rootState_
     )
 {

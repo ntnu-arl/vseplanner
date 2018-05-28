@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
+ /*
+ * Modified by Tung Dang, University of Nevada, Reno.
+ * The provided code is an implementation of the visual saliency-aware
+ * exploration algorithm.
+ */
+
 #ifndef TREE_H_
 #define TREE_H_
 
@@ -22,7 +28,7 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <octomap_world/octomap_manager.h>
-#include <nbvplanner/mesh_structure.h>
+#include <vseplanner/mesh_structure.h>
 
 #include <image_transport/image_transport.h>
 #include <sensor_msgs/CameraInfo.h>
@@ -39,22 +45,22 @@
 #define PSTATE_EXPL_SAL       4
 #define PSTATE_EXPL_FINISH    5
 
-namespace nbvInspection {
+namespace vsExploration {
 
 enum PlanningLevel { NBVP_PLANLEVEL, BSP_PLANLEVEL, SAL_PLANLEVEL};
 
 struct Params
 {
   //BSP service client
-  ros::ServiceClient bspServiceClient_;
+  ros::ServiceClient vseServiceClient_;
 
   // state
   int planner_state_;
 
   //BSP params
-  bool bspEnable_;
-  double bspReplanningDistanceMin_;
-  double bspReplanningExtensionRatio_;
+  bool vseEnable_;
+  double vseReplanningDistanceMin_;
+  double vseReplanningExtensionRatio_;
 
   //Visualization params
   double planMarker_lifetime_;
@@ -231,8 +237,8 @@ class TreeBase
   void setParams(Params params);
 
   //Publishing
-  virtual void publishPath(nbvInspection::PlanningLevel planninglevel=NBVP_PLANLEVEL) = 0;
-  virtual void publishBestPath(nbvInspection::PlanningLevel planninglevel=NBVP_PLANLEVEL) = 0;
+  virtual void publishPath(vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL) = 0;
+  virtual void publishBestPath(vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL) = 0;
 
   int getCounter();
   bool gainFound();

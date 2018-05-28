@@ -14,6 +14,12 @@
  * limitations under the License.
  */
 
+ /*
+ * Modified by Tung Dang, University of Nevada, Reno.
+ * The provided code is an implementation of the visual saliency-aware
+ * exploration algorithm.
+ */
+
 #ifndef RRTTREE_H_
 #define RRTTREE_H_
 
@@ -24,13 +30,13 @@
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
 #include <kdtree/kdtree.h>
-#include <nbvplanner/tree.h>
-#include <nbvplanner/mesh_structure.h>
+#include <vseplanner/tree.h>
+#include <vseplanner/mesh_structure.h>
 
 #define SQ(x) ((x)*(x))
 #define SQRT2 0.70711
 
-namespace nbvInspection {
+namespace vsExploration {
 
 class RrtTree : public TreeBase<Eigen::Vector4d>
 {
@@ -47,25 +53,25 @@ class RrtTree : public TreeBase<Eigen::Vector4d>
   virtual void iterate(int numRuns, int plannerMode);
   virtual bool resampleBestEdge(double ext_ratio);
   virtual bool resampleFirstVertex(int numRuns);
-  void rePublishNode(Node<StateVec> * node, nbvInspection::PlanningLevel planninglevel=NBVP_PLANLEVEL, int nodeorder=0);
+  void rePublishNode(Node<StateVec> * node, vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL, int nodeorder=0);
   virtual bool connect(Node<StateVec> *sourceNode, Node<StateVec> * targetNode, double extend_ratio);
   virtual int  getPlannerState(void);
   virtual void setHardTarget(std::vector<double> val);
   virtual bool getBestVertex(std::vector<double> &vertex);
-  
+
   virtual void setCamModel(image_geometry::PinholeCameraModel& camInfo);
   virtual void plannerEvaluate(double &extend_ratio);
   virtual void updateToEval(ros::Time time_stamp);
   virtual std::vector<geometry_msgs::Pose> getBestEdge(std::string targetFrame);
   virtual std::vector<geometry_msgs::Pose> getBestBranch(std::string targetFrame);
-  virtual void publishPath(nbvInspection::PlanningLevel planninglevel=NBVP_PLANLEVEL);
-  virtual void publishBestPath(nbvInspection::PlanningLevel planninglevel=NBVP_PLANLEVEL);
+  virtual void publishPath(vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL);
+  virtual void publishBestPath(vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL);
 
   virtual void clear();
   virtual std::vector<geometry_msgs::Pose> getPathBackToPrevious(std::string targetFrame);
   virtual void memorizeBestBranch();
   void publishNode_old(Node<StateVec> * node);
-  void publishNode(Node<StateVec> * node, nbvInspection::PlanningLevel planninglevel=NBVP_PLANLEVEL, int nodeorder=0);
+  void publishNode(Node<StateVec> * node, vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL, int nodeorder=0);
 
   double gain(StateVec state);
   double curiousGain(StateVec state);

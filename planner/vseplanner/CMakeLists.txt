@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(nbvplanner)
+project(vseplanner)
 
 add_definitions(-std=c++11)
 
@@ -21,7 +21,7 @@ find_package(octomap REQUIRED)
 
 add_service_files(
   FILES
-  nbvp_srv.srv
+  vsep_srv.srv
   octomap_srv.srv
 )
 
@@ -34,7 +34,7 @@ generate_messages(
 
 catkin_package(
   INCLUDE_DIRS include ${Eigen_INCLUDE_DIRS} ${OCTOMAP_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS}
-  LIBRARIES nbvplanner ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES}
+  LIBRARIES vseplanner ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES}
   CATKIN_DEPENDS message_runtime roscpp geometry_msgs visualization_msgs octomap_world tf kdtree
 )
 
@@ -45,17 +45,17 @@ include_directories(
   ${OCTOMAP_INCLUDE_DIRS}
 )
 
-add_library(nbvPlannerLib src/mesh_structure.cpp src/nbvp.cpp src/rrt.cpp src/tree.cpp)
-add_dependencies(nbvPlannerLib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_library(vsePlannerLib src/mesh_structure.cpp src/vsep.cpp src/rrt.cpp src/tree.cpp)
+add_dependencies(vsePlannerLib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-add_executable(nbvPlanner src/nbv_planner_node.cpp src/mesh_structure.cpp src/nbvp.cpp src/rrt.cpp src/tree.cpp)
-add_dependencies(nbvPlanner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_executable(vsePlanner src/vseplanner_node.cpp src/mesh_structure.cpp src/vsep.cpp src/rrt.cpp src/tree.cpp)
+add_dependencies(vsePlanner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-target_link_libraries(nbvPlannerLib
+target_link_libraries(vsePlannerLib
   ${catkin_LIBRARIES}
   ${OCTOMAP_LIBRARIES}
 )
-target_link_libraries(nbvPlanner
+target_link_libraries(vsePlanner
   ${catkin_LIBRARIES}
   ${OCTOMAP_LIBRARIES}
 )

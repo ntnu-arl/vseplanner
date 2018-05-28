@@ -1,14 +1,15 @@
 <?xml version="1.0"?>
 <package>
-  <name>nbvplanner</name>
+  <name>vseplanner</name>
   <version>0.0.0</version>
-  <description>The nbvplanner package</description>
+  <description>The vseplanner package</description>
 
-  <maintainer email="andreas.bircher@mavt.ethz.ch">Andreas Bircher</maintainer>
+  <maintainer email="tung.dang@nevada.unr.edu">Tung Dang</maintainer>
 
-  <license>ASL 2.0</license>
+  <license>TODO</license>
 
   <author>Andreas Bircher</author>
+  <author>Tung Dang</author>
 
   <buildtool_depend>catkin</buildtool_depend>
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(interface_nbvp_rotors)
+project(interface_vsep_rotors)
 
 find_package(catkin REQUIRED COMPONENTS
   trajectory_msgs
