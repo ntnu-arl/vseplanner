@@ -4,9 +4,8 @@ The repo aims to provide a planning algorithm and relevant packages to enable a 
 # How to build the planner
 Create a new catkin workspace and clone all modules into that workspace.
 ```
-mkdir vsep_ws && cd vsep_ws
-git clone https://github.com/unr-arl/vseplanner src
-cd src
+mkdir vsep_ws && cd vsep_ws && mkdir src && cd src
+git clone https://github.com/unr-arl/vseplanner
 git submodule update --init --recursive
 cd ..
 catkin config -DCMAKE_BUILD_TYPE=Release

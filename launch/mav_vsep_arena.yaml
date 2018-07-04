@@ -1,5 +1,5 @@
-system/v_max: 0.0125
-system/dyaw_max: 0.0261
+system/v_max: 0.0125 # in vsep/dt (s)
+system/dyaw_max: 0.0261 # in vsep/dt (s)
 system/camera/pitch: [17.5]
 system/camera/horizontal: [85.0]
 system/camera/vertical: [55.0]
