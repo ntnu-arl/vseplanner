@@ -11,8 +11,8 @@
     <!-- <arg name="world_name" value="$(find rotors_gazebo)/worlds/$(arg world_name).world" /> -->
     <arg name="world_name" value="$(find interface_vsep_rotors)/worlds/sim_vsep_avg_env.world" />
     <!-- <arg name="debug" value="true"/> -->
-    <arg name="paused" value="true"/>
-    <arg name="gui" value="true"/>
+    <arg name="paused" value="false"/>
+    <arg name="gui" value="false"/>
   </include>
 
   <node name="img_throttler" type="throttle" pkg="topic_tools" args="messages /$(arg mav_name)/vi_sensor/left/image_raw 4 /$(arg mav_name)/vi_sensor/left/image_raw_throttled" />
