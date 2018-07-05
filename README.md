@@ -1,6 +1,6 @@
 
 # vseplanner
-The repo aims to provide a planning algorithm and relevant packages to enable a saliency--aware autonomous exploration task for aerial robots.
+[WORK IN PROGRESS] The repo aims to provide a planning algorithm and relevant packages to enable a saliency--aware autonomous exploration task for aerial robots.
 # How to build the planner
 Create a new catkin workspace and clone all modules into that workspace.
 ```
@@ -11,7 +11,7 @@ cd ..
 catkin config -DCMAKE_BUILD_TYPE=Release
 catkin build
 ```
-We tested this repo with ROS Jade on Ubuntu 14.04, update for newer versions like ROS Kinetic will come soon.
+This repo runs on Ubuntu 16.04 and ROS Kinetic.
 # To run the algorithm in the Gazebo simulation environment
 First, unzip the gazebo_models.zip in the planner folder into the ./gazebo folder:
 ```
