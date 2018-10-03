@@ -774,6 +774,531 @@ bool vsExploration::RrtTree::getBestVertex(std::vector<double> &vertex){
   return true;
 }
 
+// // span a tree to search for feasible paths
+// bool vsExploration::RrtTree::connect(vsExploration::Node<StateVec> *sourceNode,
+//                                      vsExploration::Node<StateVec> *targetNode,
+//                                      double extend_ratio){
+//   //ROS_WARN("DEBUG: %f %f %f %f",  sourceNode->distance_, sourceNode->gain_, targetNode->distance_, targetNode->gain_);
+//   /*--------------------
+//   * Database
+//   ---------------------*/
+//   // Re-intialize a root node
+//   sourceNode->parent_ = NULL;
+//   sourceNode->gain_ = 0;
+//   sourceNode->distance_ = 0;
+//   sourceNode->children_.clear();
+//   // Endpoints of feasible branches
+//   std::vector< vsExploration::Node<StateVec>* > feasible_branch_ep;
+//   feasible_branch_ep.clear();
+//   // Tree data structure
+//   kdSubTree_ = kd_create(3);
+//   // Add first node to the tree
+//   kd_insert3(kdSubTree_, sourceNode->state_.x(),
+//                          sourceNode->state_.y(),
+//                          sourceNode->state_.z(), sourceNode);
+//
+//   /*---------------------------------
+//   * Initialize parameters for a tree
+//   ----------------------------------*/
+//   // Sampling space in the ellipse
+//   Eigen::Vector3f shortest_path(targetNode->state_.x() - sourceNode->state_.x(),
+//                                 targetNode->state_.y() - sourceNode->state_.y(),
+//                                 targetNode->state_.z() - sourceNode->state_.z());
+//   Eigen::Vector3f ellipse_center((targetNode->state_.x()+sourceNode->state_.x())/2.0,
+//                                  (targetNode->state_.y()+sourceNode->state_.y())/2.0,
+//                                  (targetNode->state_.z()+sourceNode->state_.z())/2.0);
+//   double shortest_dist = shortest_path.norm();
+//   float dist_limit = extend_ratio * shortest_dist;
+//   if (dist_limit < params_.vseReplanningDistanceMin_) {
+//     ROS_WARN("Too short for 2nd layer, just ignore: %f(m)", dist_limit);
+//     return false;
+//   }
+//
+//   Eigen::Vector3f ellipse_radius(0.5 * shortest_dist * extend_ratio,
+//                                  0.5 * shortest_dist * sqrt(extend_ratio * extend_ratio - 1),
+//                                  0.5 * shortest_dist * sqrt(extend_ratio * extend_ratio - 1) ); // x: r*d/2, y,z: d/2*sqrt(r^2-1)
+//   tf::Vector3 tf_e_center(ellipse_center.x(), ellipse_center.y(), ellipse_center.z());
+//   Eigen::Quaternion<float> q;
+//   Eigen::Vector3f init(1.0, 0.0, 0.0); //x-axis
+//   Eigen::Vector3f dir(shortest_path.x(), shortest_path.y(), shortest_path.z()); // AB
+//   q.setFromTwoVectors(init, dir);
+//   q.normalize();
+//   tf::Quaternion tf_e_orient(q.x(),q.y(),q.z(),q.w());
+//   tf::Transform tf_e_full(tf_e_orient, tf_e_center);
+//
+//   //Bsp: Publish visualization of replanning ellipsoid
+//   visualization_msgs::Marker p;
+//   p.header.stamp = ros::Time::now();
+//   p.header.seq = 0;
+//   p.header.frame_id = params_.navigationFrame_;
+//   p.id = 0;
+//   p.ns = "exp_workspace";
+//   p.type = visualization_msgs::Marker::SPHERE;
+//   p.action = visualization_msgs::Marker::ADD;
+//   p.pose.position.x = ellipse_center.x();
+//   p.pose.position.y = ellipse_center.y();
+//   p.pose.position.z = ellipse_center.z();
+//   p.pose.orientation.x = tf_e_orient.x();
+//   p.pose.orientation.y = tf_e_orient.y();
+//   p.pose.orientation.z = tf_e_orient.z();
+//   p.pose.orientation.w = tf_e_orient.w();
+//   p.scale.x = 2 * ellipse_radius.x();
+//   p.scale.y = 2 * ellipse_radius.y();
+//   p.scale.z = 2 * ellipse_radius.z();
+//   p.color.r = 200.0 / 255.0;
+//   p.color.g = 200.0 / 255.0;
+//   p.color.b = 0;
+//   p.color.a = 0.5;
+//   p.lifetime = ros::Duration(10.0);
+//   p.frame_locked = false;
+//   params_.planningWorkspace_.publish(p);
+//
+//   // ROS_INFO("Searching path (D:%f/ExtD:%f) between [%f,%f,%f] and [%f,%f,%f]",
+//   //                         shortest_path.norm(),
+//   //                         dist_limit,
+//   //                         sourceNode->state_.x(),
+//   //                         sourceNode->state_.y(),
+//   //                         sourceNode->state_.z(),
+//   //                         targetNode->state_.x(),
+//   //                         targetNode->state_.y(),
+//   //                         targetNode->state_.z());
+//
+//   /*-------------------------------
+//   * Loop to find feasible branches
+//   --------------------------------*/
+//   int count_true = 0, count_false = 0;
+//   int sampling_node = 0;
+//   int node_counter = 0;
+//   int feasible_branch_counter = 0;
+//   bool stop_spanning_tree = false;
+//   while ((!stop_spanning_tree) &&
+//          (feasible_branch_counter < params_.branch_max_) &&
+//          (node_counter < params_.node_max_)){
+//     /*-------------------------------
+//     * Sampling a random point
+//     --------------------------------*/
+//     StateVec rand_state;
+//     bool found_rand_state = false;
+//     int sampling_count = 0;
+//     while (!found_rand_state) {
+//       // an ellipse
+//       double r_rand = 2 * (((double) rand()) / ((double) RAND_MAX) - 0.5); //[-1, 1]
+//       double alpha = M_PI * (((double) rand()) / ((double) RAND_MAX) - 0.5); //[-pi/2, pi/2]
+//       double beta = 2 * M_PI * (((double) rand()) / ((double) RAND_MAX) - 0.5); //[-pi, pi]
+//       rand_state[0] = r_rand * ellipse_radius.x() * cos(alpha) * cos(beta);
+//       rand_state[1] = r_rand * ellipse_radius.y() * cos(alpha) * sin(beta);
+//       rand_state[2] = r_rand * ellipse_radius.z() * sin(alpha);
+//
+//       // // a cube
+//       // // rand_state[0] = ellipse_radius.x() * (((double) rand()) / ((double) RAND_MAX) - 0.5); //[-r,+r]
+//       // // rand_state[1] = ellipse_radius.y() * (((double) rand()) / ((double) RAND_MAX) - 0.5);
+//       // // rand_state[2] = ellipse_radius.z() * (((double) rand()) / ((double) RAND_MAX) - 0.5);
+//       // // sampling only in the sphere within the extended distance
+//       tf::Vector3 state_tf = tf_e_full * tf::Vector3(rand_state[0], rand_state[1], rand_state[2]);
+//       rand_state[0] = state_tf.x();
+//       rand_state[1] = state_tf.y();
+//       rand_state[2] = state_tf.z();
+//
+//       // // Sampling in the whole bounding box for cases that we need to perform second layer only
+//       // for (int i = 0; i < 3; i++) {
+//       //   rand_state[i] = ((double) rand()) / ((double) RAND_MAX);
+//       // }
+//       // rand_state[0] = params_.minX_ + rand_state[0] * (params_.maxX_ - params_.minX_);
+//       // rand_state[1] = params_.minY_ + rand_state[1] * (params_.maxY_ - params_.minY_);
+//       // rand_state[2] = params_.minZ_ + rand_state[2] * (params_.maxZ_ - params_.minZ_);
+//
+//       //Compare with the limit distance to remove useless points right in this stage to save time
+//       Eigen::Vector3f forward_vec(rand_state[0] - sourceNode->state_[0],
+//                                   rand_state[1] - sourceNode->state_[1],
+//                                   rand_state[2] - sourceNode->state_[2]);
+//       Eigen::Vector3f backward_vec(rand_state[0] - targetNode->state_[0],
+//                                   rand_state[1] - targetNode->state_[1],
+//                                   rand_state[2] - targetNode->state_[2]);
+//       if ((forward_vec.norm() + backward_vec.norm()) > dist_limit){
+//         // in the ellipse sampling case, it must always sastisfy, shouldn't reach here
+//         count_false++;
+//         continue;
+//       }else{
+//         count_true++;
+//       }
+//
+//       sampling_count++;
+//       if (sampling_count > 1000) {
+//         break;
+//         ROS_WARN("Can not sample any new point --> Stop spanning a tree");
+//       }
+//
+//       // Check inside the bounding box
+//       if (!params_.softBounds_) {
+//         if (rand_state.x() + params_.boundingBoxOffset_.x()< params_.minX_ + 0.5 * params_.boundingBox_.x()) {
+//           continue;
+//         } else if (rand_state.y() + params_.boundingBoxOffset_.y()< params_.minY_ + 0.5 * params_.boundingBox_.y()) {
+//           continue;
+//         } else if (rand_state.z() + params_.boundingBoxOffset_.z()< params_.minZ_ + 0.5 * params_.boundingBox_.z()) {
+//           continue;
+//         } else if (rand_state.x() + params_.boundingBoxOffset_.x()> params_.maxX_ - 0.5 * params_.boundingBox_.x()) {
+//           continue;
+//         } else if (rand_state.y() + params_.boundingBoxOffset_.y()> params_.maxY_ - 0.5 * params_.boundingBox_.y()) {
+//           continue;
+//         } else if (rand_state.z() + params_.boundingBoxOffset_.z()> params_.maxZ_ - 0.5 * params_.boundingBox_.z()) {
+//           continue;
+//         }
+//       }
+//
+//       // only sample points in free voxels
+//       if (volumetric_mapping::OctomapManager::CellStatus::kFree ==
+//         manager_->getCellStatusBoundingBox(Eigen::Vector3d(rand_state[0],
+//                                                            rand_state[1],
+//                                                            rand_state[2])+params_.boundingBoxOffset_,
+//                                                            params_.boundingBox_)){
+//         found_rand_state = true;
+//         // ROS_INFO("Sample point[%d,%d]: [%f,%f,%f]", sampling_count, sampling_node, newState[0], newState[1], newState[2] );
+//       }
+//     }
+//     //ROS_INFO("RRT number of sampling points True: %d, False: %d", count_true, count_false);
+//     if (count_true > 10000){
+//       // this is because the robot is outside its workspace and can not find a feasible path to come back
+//       // just execute the first layer
+//       ROS_WARN("Cannot resample new path. Status: [%d] nodes and [%d] branches", node_counter, feasible_branch_counter);
+//       return false;
+//     }
+//     /*------------------------------------
+//     * Add new node from new sampling point
+//     -------------------------------------*/
+//     if (!found_rand_state){
+//       // stop spanning a tree since we can not sample any new point
+//       stop_spanning_tree = true;
+//     }else{
+//       // Find nearest node as parent
+//       kdres * nearest = kd_nearest3(kdSubTree_, rand_state.x(), rand_state.y(), rand_state.z());
+//       if (kd_res_size(nearest) <= 0) {
+//         kd_res_free(nearest);
+//         continue;
+//       }
+//       vsExploration::Node<StateVec> * parent_node = NULL;
+//       parent_node = (vsExploration::Node<StateVec> *) kd_res_item_data(nearest);
+//       kd_res_free(nearest);
+//       Eigen::Vector3d edge(rand_state[0] - parent_node->state_[0],
+//                            rand_state[1] - parent_node->state_[1],
+//                            rand_state[2] - parent_node->state_[2]);
+//       double replanning_extension_range = params_.vseReplanningExtensionRatio_* 2 * ellipse_radius.x();
+//       if (edge.norm() > replanning_extension_range) {
+//         edge = replanning_extension_range * edge.normalized();
+//       }
+//
+//       // Compute new vertex
+//       StateVec vertex;
+//       vertex[0] = parent_node->state_[0] + edge[0];
+//       vertex[1] = parent_node->state_[1] + edge[1];
+//       vertex[2] = parent_node->state_[2] + edge[2];
+//       vertex[3] = 0;
+//
+//       // Verify the total length of this branch
+//       Eigen::Vector3f best_edge(vertex[0] - targetNode->state_[0],
+//                                 vertex[1] - targetNode->state_[1],
+//                                 vertex[2] - targetNode->state_[2]);
+//       float dist_vertex2src = parent_node->distance_ + edge.norm();
+//       float dist_vertex2tgt = dist_vertex2src + best_edge.norm();
+//       if (dist_vertex2tgt > dist_limit){
+//         //ROS_WARN("Oop: %f %f %f", newParent->distance_, direction.norm(), forward_dir.norm());
+//         continue;
+//       }
+//
+//       // Check collision along this edge
+//       Eigen::Vector3d start(parent_node->state_.x(),
+//                             parent_node->state_.y(),
+//                             parent_node->state_.z());
+//       Eigen::Vector3d end = start + edge + edge.normalized() * params_.dOvershoot_;
+//       if (volumetric_mapping::OctomapManager::CellStatus::kFree !=
+//           manager_->getLineStatusBoundingBox(start+params_.boundingBoxOffset_,
+//                                              end+params_.boundingBoxOffset_, params_.boundingBox_)) {
+//         continue;
+//       }
+//
+//       // Found one more qualified vertex
+//       vsExploration::Node<StateVec> * new_node = new vsExploration::Node<StateVec>;
+//       new_node->state_ = vertex;
+//       new_node->parent_ = parent_node;
+//       new_node->distance_ = parent_node->distance_ + edge.norm();
+//       new_node->gain_ = -1; // haven't assigned gain
+//       parent_node->children_.push_back(new_node); // make a copy
+//       node_counter++;
+//
+//       // Check target reaching
+//       Eigen::Vector3d target_radius(targetNode->state_[0]-vertex[0],
+//                                     targetNode->state_[1]-vertex[1],
+//                                     targetNode->state_[2]-vertex[2]);
+//       if (target_radius.norm() < 0.4 ){ //  voxel resolution
+//         // Reach target, but have to check the clearance
+//         // Check collision along this node to target node
+//         Eigen::Vector3d node_start(vertex[0], vertex[1], vertex[2]);
+//         Eigen::Vector3d node_end = node_start + target_radius + target_radius.normalized()* params_.dOvershoot_;
+//         if (volumetric_mapping::OctomapManager::CellStatus::kFree !=
+//             manager_->getLineStatusBoundingBox(node_start+params_.boundingBoxOffset_,
+//                                                node_end+params_.boundingBoxOffset_, params_.boundingBox_)) {
+//           continue;
+//         }else{
+//           feasible_branch_ep.push_back(new_node);
+//           feasible_branch_counter++;
+//           //ROS_WARN("RRT: reached target");
+//         }
+//       }else{
+//         kd_insert3(kdSubTree_, vertex.x(), vertex.y(), vertex.z(), new_node);
+//       }
+//       // Display new node
+//       // int nodeorder=0;
+//       // publishNode(new_node, vsExploration::BSP_PLANLEVEL, nodeorder);
+//       //publishNode(new_node);
+//       //publishNode(new_node, vsExploration::BSP_PLANLEVEL);
+//     }
+//   }
+//
+//   if (feasible_branch_counter == 0) {
+//     ROS_WARN("Can not find any feasible path!");
+//     return false;
+//   }else{
+//     ROS_INFO("Found %d feasible branches", feasible_branch_counter);
+//   }
+//
+//   // ROS_INFO("RRT number of sampling points True: %d, False: %d", count_true, count_false);
+//   /*------------------------------------------------
+//   * Evaluate the gain information along all branches
+//   --------------------------------------------------*/
+//   int feasible_branch_valid_counter = 0;
+//   int feasible_branch_zero_gain = 0;
+//   int feasible_constraint_invalid = 0;
+//   int feasible_branch_node_counter = 0;
+//   vsExploration::Node<StateVec>* best_branch_ep;
+//   double best_branch_gain = 0;
+//
+//   for (int i=0; i < feasible_branch_counter; i++ ){
+//     // ROS_WARN("Branch: %d----------------------------------------------", i);
+//     /*----------------------------------------------------
+//     * Trace backward the tree to evaluate each node
+//     ------------------------------------------------------*/
+//     int counter = 0;
+//     vsExploration::Node<StateVec> * end_node = feasible_branch_ep[i]; // end point of this branch
+//     // link to target first
+//     Eigen::Vector3d link_vertex(targetNode->state_[0] - end_node->state_[0],
+//                                 targetNode->state_[1] - end_node->state_[1],
+//                                 targetNode->state_[2] - end_node->state_[2]);
+//     vsExploration::Node<StateVec> * tgt_node = new vsExploration::Node<StateVec>;
+//     tgt_node->state_ = targetNode->state_;
+//     tgt_node->parent_ = end_node;
+//     tgt_node->distance_ = end_node->distance_ + link_vertex.norm();
+//     tgt_node->gain_ = 0; // zero gain in target node means we don't care gain in this node
+//     //kd_insert3(kdSubTree_, tgt_node->state_.x(), tgt_node->state_.y(), tgt_node->state_.z(), tgt_node);
+//     tgt_node->parent_->children_.push_back(tgt_node); // make a copy
+//     publishNode(tgt_node, vsExploration::BSP_PLANLEVEL);
+//     //ROS_INFO("Target: %f %f %f %f", tgt_node->state_[0], tgt_node->state_[1], tgt_node->state_[2], tgt_node->state_[3]);
+//     vsExploration::Node<StateVec> * node = tgt_node;
+//
+//     vsExploration::Node<StateVec> * node_parent;
+//     bool found_informative_branch = true;
+//     bool stop_tracing = false;
+//     // traceback step-by-step
+//     while ((node->parent_ != NULL) && (found_informative_branch) && (!stop_tracing)){
+//       if (node->parent_){
+//         node_parent = node->parent_;
+//         if (node_parent->gain_ == -1){
+//           // haven't assigned any orientation
+//           // sample 5 orientation
+//           if (node_parent->parent_) {
+//             // still in the branch
+//             if (node_parent->parent_->parent_){
+//               // sample new nodes and that is all
+//               double best_gain = 0;
+//               double best_yaw = node->state_[3];
+//               int cnt = 5;
+//               while (cnt){
+//                 double rand_num = 2.0 * (((double) rand()) / ((double) RAND_MAX) - 0.5); //[-1.1] (-1 + 2 * cnt / 5)
+//                 double dist = node->distance_ - node_parent->distance_;
+//                 double rand_yaw = rand_num * params_.dyaw_max_ * dist / params_.v_max_;
+//                 node_parent->state_[3] = node->state_[3] + rand_yaw;
+//                 if (node_parent->state_[3] < -M_PI) node_parent->state_[3] += 2*M_PI;
+//                 else if (node_parent->state_[3] > M_PI) node_parent->state_[3] -= 2*M_PI;
+//
+//                 if (cnt == 5) best_yaw = node_parent->state_[3]; // just choose a random orientation rather than choose the same as its children
+//
+//                 double gain_sampled = curiousGain(node_parent->state_);
+//                 if (gain_sampled > best_gain) {
+//                   best_gain = gain_sampled;
+//                   best_yaw = node_parent->state_[3];
+//                 }
+//                 cnt--;
+//               }
+//               node_parent->state_[3] = best_yaw;
+//               node_parent->gain_  = best_gain;
+//               publishNode(node_parent, vsExploration::BSP_PLANLEVEL);
+//               // ROS_INFO("Node %d: %f %f %f %f", counter, node_parent->state_[0], node_parent->state_[1], node_parent->state_[2], node_parent->state_[3]);
+//             }else{
+//               // opp: this is a special node since it requires constraints from both side
+//               double best_gain = 0;
+//               double best_yaw = 0;
+//               bool found_orientation = false;
+//               double d1 = node->distance_ - node_parent->distance_;
+//               Eigen::Vector3d link_vertex(sourceNode->state_[0] - node_parent->state_[0],
+//                                           sourceNode->state_[1] - node_parent->state_[1],
+//                                           sourceNode->state_[2] - node_parent->state_[2]);
+//               double d2 = link_vertex.norm();
+//               double delta1 = params_.dyaw_max_ * d1 / params_.v_max_;
+//               double delta2 = params_.dyaw_max_ * d2 / params_.v_max_;
+//               int cnt = 20;
+//
+//               // relax set
+//               bool found_orientation_relax = false;
+//               double best_yaw_relax = 0;
+//               double best_gain_relax = 0;
+//               double delta1_relax = 1.5 * delta1; // increase to sastify constraint
+//               double delta2_relax = 1.5 * delta2;
+//
+//               while(cnt--){
+//                 // uniformaly sampling
+//                 //-M_PI + cnt * M_PI / 10;
+//                 double rand_yaw = 2.0 * M_PI * (((double) rand()) / ((double) RAND_MAX) - 0.5); //[-pi,pi]
+//
+//                 double a1 = rand_yaw - node->state_[3];
+//                 if (a1 < -M_PI) a1 += 2*M_PI;
+//                 else if (a1 > M_PI) a1 -= 2*M_PI;
+//
+//                 double a2 = sourceNode->state_[3] - rand_yaw;
+//                 if (a2 < -M_PI) a2 += 2*M_PI;
+//                 else if (a2 > M_PI) a2 -= 2*M_PI;
+//
+//                 // Test yaw angle within the feasible motion of robot
+//                 if ( (abs(a1) <= delta1) && (abs(a2) <= delta2)){
+//                   // sastify constraints
+//                   node_parent->state_[3] = rand_yaw;
+//                   double gain_sampled = curiousGain(node_parent->state_);
+//                   if (gain_sampled > best_gain) {
+//                     best_gain = gain_sampled;
+//                     best_yaw = node_parent->state_[3];
+//                   }else if (!found_orientation){
+//                     best_yaw = node_parent->state_[3]; // feasible orientation even it provides zero-gain
+//                   }
+//                   found_orientation = true;
+//                }else if( (best_branch_gain == 0) &&  // execute when there is no non-zero branch or havent found any solution
+//                          ((!found_orientation) || (best_gain)) &&
+//                          (abs(a1) <= delta1_relax) && (abs(a2) <= delta2_relax)){
+//                  node_parent->state_[3] = rand_yaw;
+//                  double gain_sampled = curiousGain(node_parent->state_);
+//                  if (gain_sampled > best_gain_relax) {
+//                    best_gain_relax = gain_sampled;
+//                    best_yaw_relax = node_parent->state_[3];
+//                  }else if (!found_orientation_relax){
+//                    best_yaw_relax = node_parent->state_[3]; // feasible orientation even it provides zero-gain
+//                  }
+//                  found_orientation_relax = true;
+//                }
+//               }
+//               // ROS_INFO("Node %d [s]: %f %f %f %f", counter, node_parent->state_[0], node_parent->state_[1], node_parent->state_[2], node_parent->state_[3]);
+//
+//               if ((!found_orientation) && (found_orientation_relax)){
+//                 best_gain = best_gain_relax;
+//                 found_orientation = true;
+//                 best_yaw = best_yaw_relax;
+//                 // ROS_WARN("Found a relax solution");
+//               }
+//               // Assign the best orientation
+//               if (found_orientation){
+//                 node_parent->state_[3] = best_yaw;
+//                 node_parent->gain_  = best_gain; // not accumulate
+//                 publishNode(node_parent, vsExploration::BSP_PLANLEVEL);
+//                 stop_tracing = true;
+//               } else{
+//                 found_informative_branch = false;
+//               }
+//             }
+//           }
+//           node = node_parent;
+//         } else {
+//           if (node_parent->parent_) // not close to the root node
+//           {
+//             // already sampling
+//             // let check if it sastifies constraints
+//             double d = node->distance_ - node_parent->distance_;
+//             double delta_d = params_.dyaw_max_ * d / params_.v_max_;
+//             double delta_ori = node_parent->state_[3] - node->state_[3];
+//             if (delta_ori < -M_PI) delta_ori += 2*M_PI;
+//             else if (delta_ori > M_PI) delta_ori -= 2*M_PI;
+//             if (abs(delta_ori) <= delta_d){
+//               // good case
+//               // ROS_INFO("Node %d [evaluated - g = %f]: %f %f %f %f", counter, node_parent->gain_, node_parent->state_[0], node_parent->state_[1], node_parent->state_[2], node_parent->state_[3]);
+//               stop_tracing = true;
+//             }else{
+//               // bad case: break a new branch
+//               vsExploration::Node<StateVec> * node_break = new vsExploration::Node<StateVec>;
+//               node_break->state_ = node_parent->state_; //same state
+//               node_break->parent_ = node_parent->parent_; //same parent
+//               node_break->distance_ = node_parent->distance_;
+//               node_break->gain_ = -1; // to initilize a new node in this branch
+//               //kd_insert3(kdSubTree_, node_break->state_.x(), node_break->state_.y(), node_break->state_.z(), node_break);
+//               node_break->parent_->children_.push_back(node_break); // make a copy
+//
+//               node->parent_ = node_break;  // assign new node
+//               // ROS_INFO("Node %d [re-eval]: %f %f %f %f", counter, node_parent->state_[0], node_parent->state_[1], node_parent->state_[2], node_parent->state_[3]);
+//             }
+//           }else{
+//             // skip this special node
+//             stop_tracing = true;
+//           }
+//         }
+//       }
+//       counter++;
+//       feasible_branch_node_counter++;
+//     }
+//     if (found_informative_branch){
+//       node = tgt_node;
+//       double gain_accumulate = 0;
+//       while(node->parent_){
+//         gain_accumulate += node->gain_;
+//         node = node->parent_;
+//       }
+//       if (gain_accumulate > 0) {
+//         // ROS_INFO("Gain: %f", gain_accumulate);
+//         feasible_branch_valid_counter++;
+//         // ROS_WARN("Success with gain: %f", gain_accumulate);
+//       }
+//       else {
+//         feasible_branch_zero_gain++;
+//         // ROS_WARN("Success but zero gain");
+//       }
+//       tgt_node->gain_ = gain_accumulate;
+//       if (gain_accumulate > best_branch_gain){
+//         best_branch_gain = gain_accumulate;
+//         best_branch_ep = tgt_node;
+//       }
+//     }else{
+//       // infeasible path: discard it
+//       feasible_constraint_invalid++;
+//     }
+//   }
+//
+//   /*ROS_INFO("RRT: %d nodes with %d branches [%d nodes] \n[Valid: %d; Valid-but-zero-gain: %d; Invalid-due-to-constraint: %d]",
+//             node_counter,
+//             feasible_branch_counter,
+//             feasible_branch_node_counter,
+//             feasible_branch_valid_counter,
+//             feasible_branch_zero_gain,
+//             feasible_constraint_invalid );
+//  */
+//   if (best_branch_gain > 0){
+//     bestNode_ = best_branch_ep;
+//     bestReGain_ = bestNode_->gain_;
+//     // Display new node
+//     int nodeorder=2;
+//     publishNode(bestNode_, vsExploration::BSP_PLANLEVEL, nodeorder);
+//     ROS_INFO("The best branch with gain %f :)", bestNode_->gain_);
+//     return true;
+//   }else if (feasible_branch_valid_counter){
+//     ROS_WARN("St wrong: best branch gain %f", best_branch_gain);
+//     return false;
+//   }else{
+//     ROS_INFO("Can not find any non-zero branch :(");
+//     return false;
+//   }
+// }
+
 // span a tree to search for feasible paths
 bool vsExploration::RrtTree::connect(vsExploration::Node<StateVec> *sourceNode,
                                      vsExploration::Node<StateVec> *targetNode,
