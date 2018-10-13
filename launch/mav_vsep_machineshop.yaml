@@ -1,5 +1,7 @@
 system/v_max: 0.0125 # in vsep/dt (s)
 system/dyaw_max: 0.0261 # in vsep/dt (s)
+system/dyaw_sampling_limit: 1.57 # dyaw max 90 deg per vertex
+
 system/camera/pitch: [17.5]
 system/camera/horizontal: [85.0]
 system/camera/vertical: [55.0]

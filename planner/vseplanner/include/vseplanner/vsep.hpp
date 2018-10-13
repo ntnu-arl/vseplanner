@@ -373,6 +373,12 @@ bool vsExploration::vsePlanner<stateVec>::setParams()
     ROS_WARN("No maximal yaw speed specified. Looking for %s. Default is 0.5.",
              (ns + "/system/yaw_max").c_str());
   }
+  params_.dyaw_sampling_limit_ = 1.57; // 90 deg
+  if (!ros::param::get(ns + "/system/dyaw_sampling_limit", params_.dyaw_sampling_limit_)) {
+    ROS_WARN("No maximal dyaw specified. Looking for %s. Default is 1.57.",
+             (ns + "/system/dyaw_sampling_limit").c_str());
+  }
+
   params_.camPitch_ = {15.0};
   if (!ros::param::get(ns + "/system/camera/pitch", params_.camPitch_)) {
     ROS_WARN("No camera pitch specified. Looking for %s. Default is 15deg.",

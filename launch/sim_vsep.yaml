@@ -1,5 +1,6 @@
 system/v_max: 0.2 # in vsep/dt (s)
-system/dyaw_max: 0.31416 # in vsep/dt (s)
+system/dyaw_max: 0.1571 # in vsep/dt (s)
+system/dyaw_sampling_limit: 1.57 # dyaw max 90 deg per vertex
 
 system/camera/pitch: [15.0]
 system/camera/horizontal: [90.0]
@@ -12,7 +13,7 @@ system/bbx/x_offset: 0.0
 system/bbx/y_offset: 0.0
 system/bbx/z_offset: 0.0
 
-vsep/yaw_sampling_limit: 6.283185
+vsep/yaw_sampling_limit: 3.14 #6.283185
 vsep/gain/free: 0.0
 vsep/gain/occupied: 0.0
 vsep/gain/unmapped: 10.0

@@ -75,6 +75,7 @@ class RrtTree : public TreeBase<Eigen::Vector4d>
 
   double gain(StateVec state);
   double curiousGain(StateVec state);
+  double entropyGain(Node<StateVec> * node);
 
   std::vector<geometry_msgs::Pose> samplePath(StateVec start, StateVec end,
                                               std::string targetFrame);

@@ -89,6 +89,7 @@ struct Params
   double zero_gain_;
 
   double yaw_sampling_limit_;
+  double dyaw_sampling_limit_; // for sampling policy in second layer 
   double v_max_;
   double dyaw_max_;
   double dOvershoot_;
@@ -142,6 +143,7 @@ struct Params
   int exp_filter_window_;
   float sal_ground_remove_level_;
   bool sal_wait_for_planner_;
+
 
   double meshResolution_;
 
