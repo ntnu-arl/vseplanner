@@ -76,7 +76,7 @@ vsep/time_budget: 400.0
 vsep/replanning_distance_min: 0.5 #0.35
 vsep/replanning_extension_ratio: 0.5
 vsep/exp_lower_bound: 0.2 # percentage: limit to switch to full 2 layers exploration
-vsep/exp_upper_bound: 0.87 # percentage: limit to switch to saliency based exploration
+vsep/exp_upper_bound: 0.7 #87 # percentage: limit to switch to saliency based exploration
 vsep/exp_filter_window: 3 # 1: means no average for exploration rate
 
 vsep/sal_ground_remove_level: -10 #means no

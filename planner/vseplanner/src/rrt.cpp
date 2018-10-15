@@ -417,12 +417,10 @@ void vsExploration::RrtTree::iterate(int numRuns, int plannerMode) {
   StateVec newState;
 
   // Sample over a sphere with the radius of the maximum diagonal of the
-  // exploration
-  // space. Throw away samples outside the sampling region it exiting is not
-  // allowed
+  // exploration space.
+  // Throw away samples outside the sampling region it exiting is not allowed
   // by the corresponding parameter. This method is to not bias the tree towards
-  // the
-  // center of the exploration space.
+  // the center of the exploration space.
   double radius = sqrt(SQ(params_.minX_ - params_.maxX_) +
                        SQ(params_.minY_ - params_.maxY_) +
                        SQ(params_.minZ_ - params_.maxZ_));
@@ -508,14 +506,22 @@ void vsExploration::RrtTree::iterate(int numRuns, int plannerMode) {
     newNode->state_ = newState;
     newNode->parent_ = newParent;
     newNode->distance_ = newParent->distance_ + direction.norm();
+    newNode->id_ = counter_ + 1; //0 is root node
+    newNode->children_.clear();
     newParent->children_.push_back(newNode);
+
+    if (plannerMode == 2)
+      ROS_INFO("Add a node with [%d] to parents [%d] with [%d] children",
+             newNode->id_, newParent->id_, newParent->children_.size());
+
     double new_gain = 0;
     // JAH: planner_mode: switch
     if (plannerMode == 2) {
-      new_gain = curiousGain(newNode->state_);
-      newNode->gain_ =
-          newParent->gain_ +
-          new_gain * exp(-params_.degressiveCoeff_ * newNode->distance_);
+      // To be calculated after forming the whole tree
+      newNode->marker_ = 0;
+      // new_gain = curiousGain(newNode->state_);
+      // newNode->gain_ = newParent->gain_ +
+      //     new_gain * exp(-params_.degressiveCoeff_ * newNode->distance_);
     } else {
       new_gain = gain(newNode->state_);
       if (numRuns < params_.degressiveSwitchoffLoops_) {
@@ -530,7 +536,6 @@ void vsExploration::RrtTree::iterate(int numRuns, int plannerMode) {
 
     // Display new node
     // publishNode(newNode);
-
     if (plannerMode == 2)
       publishNode(newNode, vsExploration::SAL_PLANLEVEL);
     else
@@ -579,6 +584,8 @@ void vsExploration::RrtTree::initialize(int numRuns) {
   rootNode_->distance_ = 0.0;
   rootNode_->gain_ = params_.zero_gain_;
   rootNode_->parent_ = NULL;
+  rootNode_->id_ = 0;
+  rootNode_->marker_ = 0;
 
   if (params_.exact_root_) {
     if (iterationCount_ <= 1) {
@@ -593,8 +600,7 @@ void vsExploration::RrtTree::initialize(int numRuns) {
   iterationCount_++;
 
   // Insert all nodes of the remainder of the previous best branch, checking for
-  // collisions and
-  // recomputing the gain.
+  // collisions and recomputing the gain.
   for (typename std::vector<StateVec>::reverse_iterator iter =
            bestBranchMemory_.rbegin();
        iter != bestBranchMemory_.rend(); ++iter) {
@@ -688,7 +694,6 @@ void vsExploration::RrtTree::initialize(int numRuns) {
 }
 
 bool vsExploration::RrtTree::resampleBestEdge(double ext_ratio) {
-
   // double ext_ratio = 0;
   // plannerEvaluate(ext_ratio);
 
@@ -727,6 +732,68 @@ bool vsExploration::RrtTree::resampleBestEdge(double ext_ratio) {
 
   ROS_INFO("Extend ratio (after checking the time budget) : %f", ext_ratio);
   return connect(sourceNode, targetNode, ext_ratio);
+}
+
+bool vsExploration::RrtTree::moveToNextNode(Node<StateVec> * &node) {
+  int num_child = node->children_.size();
+  if (num_child > 0) {
+    ROS_INFO("Has [%d] children, should go deeper", num_child);
+    // Has children, should go deeper
+    while (num_child > 0) {
+      num_child--;
+      if (node->children_[num_child]->marker_ == 0) {
+        node = node->children_[num_child];
+        ROS_INFO("Pick children at [%d] with id", num_child, (int)node->id_);
+        return true;
+      }
+    }
+  }
+
+  // All children are explored OR no children,
+  // Mark this as an explored node
+  // Back to parent
+  ROS_INFO("No children or leaf node");
+  node->marker_ = 1;
+  if (node->parent_ != NULL) {
+    node = node->parent_;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool vsExploration::RrtTree::computeBestEntropyBranch() {
+  // From the root node
+  // Trace until the end of each branch
+  // Then cmpute D-entropy for each branch
+  float best_e_gain = 0;
+  vsExploration::Node<StateVec> *best_e_node = rootNode_;
+  vsExploration::Node<StateVec> *node = rootNode_;
+
+  // Scan the whole tree
+  int count = 0;
+  while (moveToNextNode(node) && (count++ < 100)) {
+    ROS_INFO("At node [%d]", node->id_);
+    if (node->children_.size() == 0) {
+      // End node
+      // Computer the entropy_current
+      ROS_INFO("Found an end node");
+      float gain_tmp = entropyGain(node);
+      if (gain_tmp > best_e_gain) {
+        best_e_gain = gain_tmp;
+        best_e_node = node;
+      }
+    }
+  }
+
+  ROS_INFO("Best gain: %f", best_e_gain);
+  if (best_e_gain > 0) {
+    bestGain_ = best_e_gain;
+    bestNode_ = best_e_node;
+    return true;
+  } else {
+    return false;
+  }
 }
 
 void vsExploration::RrtTree::plannerEvaluate(double &extend_ratio) {
@@ -2264,8 +2331,11 @@ double vsExploration::RrtTree::curiousGain(StateVec state) {
 }
 
 double vsExploration::RrtTree::entropyGain(Node<StateVec> *node) {
-
-  // This function computes the gain
+  // node: is an end node of a branch
+  // Compute a potential difference entropy gain of this branch
+  // Consider the whole path
+  // Here we don't need to take into account the root node and the end node
+  // Since they are the same for every branch
   double gain = 0.0;
   const double disc = manager_->getResolution();
   Eigen::Vector3d origin;
@@ -2274,9 +2344,6 @@ double vsExploration::RrtTree::entropyGain(Node<StateVec> *node) {
   double rangeSq = pow(cam_range, 2.0);
   int count = 0;
 
-  // Compute a potential volume for the scanning: go up to the root node
-  // here we don't need to take into account the root node and the end node
-  // since they are the same for every branch
   std::vector<double> vx;
   std::vector<double> vy;
   std::vector<double> vz;
@@ -2296,6 +2363,7 @@ double vsExploration::RrtTree::entropyGain(Node<StateVec> *node) {
   }
 
   int numberofNodes = vx.size();
+  if (numberofNodes == 0) return 0;
   double xmin = *std::min_element(vx.begin(), vx.end());
   double xmax = *std::max_element(vx.begin(), vx.end());
   double ymin = *std::min_element(vy.begin(), vy.end());

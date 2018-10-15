@@ -20,8 +20,8 @@
  * exploration algorithm.
  */
 
-#ifndef NBVP_H_
-#define NBVP_H_
+#ifndef VSEP_H_
+#define VSEP_H_
 
 #include <vector>
 #include <fstream>
@@ -47,8 +47,8 @@
 
 //Customization
 
-#define SQ(x) ((x)*(x))
-#define SQRT2 0.70711
+// #define SQ(x) ((x)*(x))
+// #define SQRT2 0.70711
 
 namespace vsExploration {
 

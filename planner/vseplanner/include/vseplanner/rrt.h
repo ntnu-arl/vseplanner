@@ -14,76 +14,89 @@
  * limitations under the License.
  */
 
- /*
- * Modified by Tung Dang, University of Nevada, Reno.
- * The provided code is an implementation of the visual saliency-aware
- * exploration algorithm.
- */
+/*
+* Modified by Tung Dang, University of Nevada, Reno.
+* The provided code is an implementation of the visual saliency-aware
+* exploration algorithm.
+*/
 
-#ifndef RRTTREE_H_
-#define RRTTREE_H_
+#ifndef RRT_H_
+#define RRT_H_
 
-#include <ros/ros.h>
-#include <ros/package.h>
-#include <sstream>
 #include <eigen3/Eigen/Dense>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
-#include <nav_msgs/Odometry.h>
 #include <kdtree/kdtree.h>
-#include <vseplanner/tree.h>
+#include <nav_msgs/Odometry.h>
+#include <ros/package.h>
+#include <ros/ros.h>
+#include <sstream>
 #include <vseplanner/mesh_structure.h>
+#include <vseplanner/tree.h>
 
-#define SQ(x) ((x)*(x))
+#define SQ(x) ((x) * (x))
 #define SQRT2 0.70711
 
 namespace vsExploration {
 
-class RrtTree : public TreeBase<Eigen::Vector4d>
-{
- public:
+class RrtTree : public TreeBase<Eigen::Vector4d> {
+public:
   typedef Eigen::Vector4d StateVec;
 
   RrtTree();
-  RrtTree(mesh::StlMesh * mesh, volumetric_mapping::OctomapManager * manager);
+  RrtTree(mesh::StlMesh *mesh, volumetric_mapping::OctomapManager *manager);
   ~RrtTree();
-  virtual void setStateFromPoseMsg(const geometry_msgs::PoseWithCovarianceStamped& pose);
-  virtual void setStateFromOdometryMsg(const nav_msgs::Odometry& pose);
-  virtual void setPeerStateFromPoseMsg(const geometry_msgs::PoseWithCovarianceStamped& pose, int n_peer);
+  virtual void
+  setStateFromPoseMsg(const geometry_msgs::PoseWithCovarianceStamped &pose);
+  virtual void setStateFromOdometryMsg(const nav_msgs::Odometry &pose);
+  virtual void
+  setPeerStateFromPoseMsg(const geometry_msgs::PoseWithCovarianceStamped &pose,
+                          int n_peer);
   virtual void initialize(int numRuns);
   virtual void iterate(int numRuns, int plannerMode);
   virtual bool resampleBestEdge(double ext_ratio);
   virtual bool resampleFirstVertex(int numRuns);
-  void rePublishNode(Node<StateVec> * node, vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL, int nodeorder=0);
-  virtual bool connect(Node<StateVec> *sourceNode, Node<StateVec> * targetNode, double extend_ratio);
-  virtual int  getPlannerState(void);
+  virtual bool computeBestEntropyBranch();
+
+  void
+  rePublishNode(Node<StateVec> *node,
+                vsExploration::PlanningLevel planninglevel = NBVP_PLANLEVEL,
+                int nodeorder = 0);
+  virtual bool connect(Node<StateVec> *sourceNode, Node<StateVec> *targetNode,
+                       double extend_ratio);
+  virtual int getPlannerState(void);
   virtual void setHardTarget(std::vector<double> val);
   virtual bool getBestVertex(std::vector<double> &vertex);
 
-  virtual void setCamModel(image_geometry::PinholeCameraModel& camInfo);
+  virtual void setCamModel(image_geometry::PinholeCameraModel &camInfo);
   virtual void plannerEvaluate(double &extend_ratio);
   virtual void updateToEval(ros::Time time_stamp);
   virtual std::vector<geometry_msgs::Pose> getBestEdge(std::string targetFrame);
-  virtual std::vector<geometry_msgs::Pose> getBestBranch(std::string targetFrame);
-  virtual void publishPath(vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL);
-  virtual void publishBestPath(vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL);
+  virtual std::vector<geometry_msgs::Pose>
+  getBestBranch(std::string targetFrame);
+  virtual void
+  publishPath(vsExploration::PlanningLevel planninglevel = NBVP_PLANLEVEL);
+  virtual void
+  publishBestPath(vsExploration::PlanningLevel planninglevel = NBVP_PLANLEVEL);
 
   virtual void clear();
-  virtual std::vector<geometry_msgs::Pose> getPathBackToPrevious(std::string targetFrame);
+  virtual std::vector<geometry_msgs::Pose>
+  getPathBackToPrevious(std::string targetFrame);
   virtual void memorizeBestBranch();
-  void publishNode_old(Node<StateVec> * node);
-  void publishNode(Node<StateVec> * node, vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL, int nodeorder=0);
+  void publishNode_old(Node<StateVec> *node);
+  void publishNode(Node<StateVec> *node,
+                   vsExploration::PlanningLevel planninglevel = NBVP_PLANLEVEL,
+                   int nodeorder = 0);
 
   double gain(StateVec state);
   double curiousGain(StateVec state);
-  double entropyGain(Node<StateVec> * node);
-
+  double entropyGain(Node<StateVec> *node);
+  bool moveToNextNode(Node<StateVec> * &node);
   std::vector<geometry_msgs::Pose> samplePath(StateVec start, StateVec end,
                                               std::string targetFrame);
 
-
- protected:
-  kdtree * kdTree_;
-  kdtree * kdSubTree_;
+protected:
+  kdtree *kdTree_;
+  kdtree *kdSubTree_;
 
   int g_ID_S_;
   int g_ID_r_;
@@ -104,7 +117,6 @@ class RrtTree : public TreeBase<Eigen::Vector4d>
   std::vector<double> erate_buf_;
   image_geometry::PinholeCameraModel cam_model_;
   bool cam_model_ready_;
-
 };
 }
 
