@@ -33,7 +33,7 @@
 #include <nav_msgs/Path.h>
 
 #include <octomap_world/octomap_manager.h>
-#include <vseplanner/vsep_srv.h>
+#include <vsep_msgs/vsep_srv.h>
 #include <vseplanner/octomap_srv.h>
 #include <vseplanner/mesh_structure.h>
 #include <vseplanner/tree.hpp>
@@ -97,7 +97,7 @@ class vsePlanner
   bool setParams();
   void posCallback(const geometry_msgs::PoseWithCovarianceStamped& pose);
   void odomCallback(const nav_msgs::Odometry& pose);
-  bool plannerCallback(vseplanner::vsep_srv::Request& req, vseplanner::vsep_srv::Response& res);
+  bool plannerCallback(vsep_msgs::vsep_srv::Request& req, vsep_msgs::vsep_srv::Response& res);
   void insertPointcloudWithTf(const sensor_msgs::PointCloud2::ConstPtr& pointcloud);
   void insertPointcloudWithTfCamUp(const sensor_msgs::PointCloud2::ConstPtr& pointcloud);
   void insertPointcloudWithTfCamDown(const sensor_msgs::PointCloud2::ConstPtr& pointcloud);

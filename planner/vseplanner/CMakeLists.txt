@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
   image_transport
   image_geometry
+  vsep_msgs
 )
 find_package(cmake_modules REQUIRED)
 find_package(Eigen REQUIRED)
@@ -21,7 +22,6 @@ find_package(octomap REQUIRED)
 
 add_service_files(
   FILES
-  vsep_srv.srv
   octomap_srv.srv
 )
 

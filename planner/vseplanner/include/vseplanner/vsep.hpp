@@ -209,9 +209,10 @@ void vsExploration::vsePlanner<stateVec>::odomCallback(
   ready_ = true;
 }
 
-template <typename stateVec>
-bool vsExploration::vsePlanner<stateVec>::plannerCallback(
-    vseplanner::vsep_srv::Request &req, vseplanner::vsep_srv::Response &res) {
+template<typename stateVec>
+bool vsExploration::vsePlanner<stateVec>::plannerCallback(vsep_msgs::vsep_srv::Request& req,
+                                                          vsep_msgs::vsep_srv::Response& res)
+{
   ros::Time computationTime = ros::Time::now();
   // Check that planner is ready to compute path.
   if (!ros::ok()) {

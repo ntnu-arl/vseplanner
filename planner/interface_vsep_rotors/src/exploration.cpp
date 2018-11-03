@@ -30,7 +30,7 @@
 
 #include <mav_msgs/conversions.h>
 #include <mav_msgs/default_topics.h>
-#include <vseplanner/vsep_srv.h>
+#include <vsep_msgs/vsep_srv.h>
 #include <interface_vsep_rotors/trigger_planner.h>
 
 bool initEnable = true;
@@ -53,7 +53,7 @@ bool trigger_planner(interface_vsep_rotors::trigger_planner::Request  &req,
   if (triggerPlanner){
     triggerPlanner = false;
     ROS_INFO_THROTTLE(0.5, "Planning iteration %i", iteration);
-    vseplanner::vsep_srv planSrv;
+    vsep_msgs::vsep_srv planSrv;
     planSrv.request.header.stamp = ros::Time::now();
     planSrv.request.header.seq = iteration;
     planSrv.request.header.frame_id = "world";
@@ -176,7 +176,7 @@ int main(int argc, char** argv)
     // Start planning: The planner is called and the computed path sent to the controller.
     while (ros::ok()) {
       ROS_INFO_THROTTLE(0.5, "Planning iteration %i", iteration);
-      vseplanner::vsep_srv planSrv;
+      vsep_msgs::vsep_srv planSrv;
       planSrv.request.header.stamp = ros::Time::now();
       planSrv.request.header.seq = iteration;
       planSrv.request.header.frame_id = "world";
