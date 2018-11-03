@@ -20,15 +20,15 @@
   <node name="img_throttler" type="throttle" pkg="topic_tools" args="messages /$(arg mav_name)/vi_sensor/left/image_raw 4 /$(arg mav_name)/vi_sensor/left/image_raw_throttled"/>
   <!-- Saliency processing -->
   <arg name="imagestream" value="/firefly/vi_sensor/left/image_raw_throttled"/>
-  <arg name="algorithm" value="VOCUS2"/>
-  <node name="saliencymap$(arg algorithm)" pkg="visual_saliency" type="saliencyDetectionVOCUS2" output="screen">
-    <remap from="/rgbimage_in" to="$(arg imagestream)"/>
-    <!-- <remap from="/saliency/image" to="/saliency/image"/> -->
-    <param name="image_resize_percent" type="double" value="0.25"/>
-    <param name="threshold_percent" type="double" value="0.025"/>
-    <param name="topcut_enable" type="bool" value="true"/>
-    <param name="topcut_pixels" type="int" value="25"/>
-    <param name="time_show" type="bool" value="false"/>
+  <arg name="saliency_algorithm" value="VOCUS2"/>
+  <node name="saliencymap$(arg saliency_algorithm)" pkg="visual_saliency" type="SaliencyDetection" output="screen">
+	<remap from="/saliency_detection/rgbimage_in" to="$(arg imagestream)"/>
+        <param name="saliency_algorithm" type="string" value="$(arg saliency_algorithm)"/>
+        <param name="image_resize_percent" type="double" value="0.25"/>
+        <param name="threshold_percent" type="double" value="0.05"/>
+        <param name="topcut_enable" type="bool" value="true"/>
+        <param name="topcut_pixels" type="int" value="25"/>
+        <param name="time_show" type="bool" value="false"/>
   </node>
 
   <node pkg="tf" type="static_transform_publisher" name="tf_53" args="0 0 0 0 0 0 world navigation 100"/>
@@ -79,7 +79,7 @@
       <remap from="pointcloud_throttled" to="$(arg pcl_topic)"/>
       <remap from="pose" to="/$(arg mav_name)$(arg subscript)/ground_truth/pose_with_covariance"/>
       <remap from="vseplanner" to="/$(arg mav_name)$(arg subscript)/vseplanner"/>
-      <remap from="image_saliency" to="/saliency/image_norm"/>
+      <remap from="image_saliency" to="/saliency_detection/image_norm"/>
       <remap from="image_info" to="/$(arg mav_name)/vi_sensor/left/camera_info"/>
       <rosparam command="load" file="$(arg param_file)"/>
     </node>
