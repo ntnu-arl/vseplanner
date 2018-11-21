@@ -145,7 +145,7 @@ int main(int argc, char** argv)
   // of initial paths.
   if (initEnable){
     ROS_INFO("Starting the planner: Performing initialization motion");
-    for (double i = 0; i <= 1.0; i = i + 0.1) {
+    for (double i = 0; i <= 2.0; i = i + 0.1) {
       nh.param<double>("wp_x", trajectory_point.position_W.x(), 0.0);
       nh.param<double>("wp_y", trajectory_point.position_W.y(), 0.0);
       nh.param<double>("wp_z", trajectory_point.position_W.z(), 1.0);

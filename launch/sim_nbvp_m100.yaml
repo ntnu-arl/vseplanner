@@ -12,7 +12,7 @@ system/bbx/x_offset: 0.0
 system/bbx/y_offset: 0.0
 system/bbx/z_offset: 0.0
 
-vsep/yaw_sampling_limit: 6.283185
+vsep/yaw_sampling_limit: 3.14 #6.283185
 vsep/gain/free: 0.0
 vsep/gain/occupied: 0.0
 vsep/gain/unmapped: 10.0
@@ -33,12 +33,12 @@ vsep/log/on: false
 
 # bounding box: necessary to limit the simulation
 # scenario (smaller than actual gazebo scenario)
-bbx/minX: -7.0
-bbx/minY: -7.0
-bbx/minZ: 1.0
-bbx/maxX: 4.0
-bbx/maxY: 7.0
-bbx/maxZ: 2.0
+bbx/minX: 9.8
+bbx/minY: -5.0
+bbx/minZ: -10.0
+bbx/maxX: 50.0
+bbx/maxY: 5.0
+bbx/maxZ: 10.0
 
 bbx/plusX: 1.0
 bbx/plusY: 1.0

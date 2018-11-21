@@ -22,7 +22,7 @@
   <arg name="subscript" default="" />
   <arg name="param_file" value="$(find interface_vsep_rotors)/../../launch/sim_nbvp_m100.yaml" />
   <arg name="pcl_topic" value="/$(arg mav_name)/vi_sensor/camera_depth/depth/points" />
-  <arg name="waypoint_x" value="0.0" /> <!-- -3.0 -->
+  <arg name="waypoint_x" value="10.0" /> <!-- -3.0 -->
   <arg name="waypoint_y" value="0.0" />
   <arg name="waypoint_z" value="1.0" />
 
