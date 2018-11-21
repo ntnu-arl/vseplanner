@@ -48,3 +48,6 @@
 	path = planner/volumetric_mapping
 	url = https://github.com/unr-arl/volumetric_mapping
 	branch = visual_saliency
+[submodule "velodyne_simulator"]
+	path = velodyne_simulator
+	url = https://bitbucket.org/DataspeedInc/velodyne_simulator.git
