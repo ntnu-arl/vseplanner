@@ -1,5 +1,5 @@
-system/v_max: 0.2 # in vsep/dt (s)
-system/dyaw_max: 0.31416 # in vsep/dt (s)
+system/v_max: 0.5 #0.2 # in vsep/dt (s)
+system/dyaw_max: 0.6 #0.31416 # in vsep/dt (s)
 
 system/camera/pitch: [15.0]
 system/camera/horizontal: [90.0]
@@ -12,7 +12,7 @@ system/bbx/x_offset: 0.0
 system/bbx/y_offset: 0.0
 system/bbx/z_offset: 0.0
 
-vsep/yaw_sampling_limit: 3.14 #6.283185
+vsep/yaw_sampling_limit: 1.57 #6.283185
 vsep/gain/free: 0.0
 vsep/gain/occupied: 0.0
 vsep/gain/unmapped: 10.0
@@ -35,10 +35,10 @@ vsep/log/on: false
 # scenario (smaller than actual gazebo scenario)
 bbx/minX: 9.8
 bbx/minY: -5.0
-bbx/minZ: -10.0
+bbx/minZ: -50.0
 bbx/maxX: 50.0
 bbx/maxY: 5.0
-bbx/maxZ: 10.0
+bbx/maxZ: 5.0
 
 bbx/plusX: 1.0
 bbx/plusY: 1.0
