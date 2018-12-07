@@ -223,34 +223,40 @@ bool vsExploration::vsePlanner<stateVec>::plannerCallback(vsep_msgs::vsep_srv::R
 
   int planner_mode = 1;
   static int target_counter = 0;
-  if (tree_->getPlannerState() == PSTATE_EXPL_SAL){
+  if (tree_->getPlannerState() == PSTATE_EXPL_SAL) {
     // only case we switch to saliency only, and turn off the second layer
     planner_mode = 2;
     ROS_WARN("Switched to saliency based exploration");
     //ROS_WARN("cuEnable: %s", params_.cuEnable_?"true":"false");
   }
 
-  while ((!tree_->gainFound() || tree_->getCounter() < params_.initIterations_) && ros::ok()) {
-    if (tree_->getCounter() > params_.cutoffIterations_) {
-      ROS_INFO("No gain found, shutting down");
-      // ros::shutdown();
-      brkflag = true;
-      break;
-    }
-    if (loopCount > 1000 * (tree_->getCounter() + 1)) {
-      ROS_WARN("planner<iterate>: Exceeding maximum failed iterations, return to previous point!");
-      res.path = tree_->getPathBackToPrevious(req.header.frame_id);
-      brkflag =  true;
-      break;
-    }
-    tree_->iterate(num_runs_, planner_mode);
-    loopCount++;
-  }
-  if (brkflag) return true;
+  bool gb_enable = true;
 
-  // evaluate current situation first
-  double ext_ratio = 0;
-  tree_->plannerEvaluate(ext_ratio);
+  if (gb_enable) {
+    tree_->buildGraph();
+    tree_->evaluateGraph();
+  } else {
+    while ((!tree_->gainFound() || tree_->getCounter() < params_.initIterations_) && ros::ok()) {
+      if (tree_->getCounter() > params_.cutoffIterations_) {
+        ROS_INFO("No gain found, shutting down");
+        // ros::shutdown();
+        brkflag = true;
+        break;
+      }
+      if (loopCount > 1000 * (tree_->getCounter() + 1)) {
+        ROS_WARN("planner<iterate>: Exceeding maximum failed iterations, return to previous point!");
+        res.path = tree_->getPathBackToPrevious(req.header.frame_id);
+        brkflag =  true;
+        break;
+      }
+      tree_->iterate(num_runs_, planner_mode);
+      loopCount++;
+    }
+    if (brkflag) return true;
+  }
+  //evaluate current situation first
+  // double ext_ratio = 0;
+  // tree_->plannerEvaluate(ext_ratio);
 
   // Resample first vertex of NBVP planning level
   if (planner_mode != 2){
@@ -262,6 +268,10 @@ bool vsExploration::vsePlanner<stateVec>::plannerCallback(vsep_msgs::vsep_srv::R
     }
   }
 
+  res.path = tree_->getBestEdge(req.header.frame_id);
+  ROS_INFO("Finished 1st layer: path computation lasted %2.3fs with %d nodes",
+            (ros::Time::now() - computationTime).toSec(), tree_->getCounter());
+
   if (planner_mode == 2) {
     tree_->publishPath(SAL_PLANLEVEL);
     tree_->publishBestPath(SAL_PLANLEVEL);
@@ -271,35 +281,31 @@ bool vsExploration::vsePlanner<stateVec>::plannerCallback(vsep_msgs::vsep_srv::R
     tree_->publishBestPath(NBVP_PLANLEVEL);
   }
 
-  res.path = tree_->getBestEdge(req.header.frame_id);
-  ROS_INFO("Finished 1st layer: path computation lasted %2.3fs with %d nodes",
-            (ros::Time::now() - computationTime).toSec(), tree_->getCounter());
-
   if (!res.path.empty()){
     ++num_runs_; //successful NBVP planning steps
   }
 
-  computationTime = ros::Time::now();
-  if ((params_.cuEnable_) && (planner_mode != 2)){
-    bool res_resampleBestEdge = tree_->resampleBestEdge(ext_ratio);
-
-    //Bsp: BSP planning level done, publish entire MarkerArray (full nested replanning tree)
-    tree_->publishPath(BSP_PLANLEVEL);
-    if (res_resampleBestEdge){
-      //Bsp: Extract the best branch
-      res.path = tree_->getBestBranch(req.header.frame_id);
-      if (!res.path.empty()){
-        // ++num_reruns_; //successful BSP planning steps
-      }
-      //Bsp: Publish extracted path (best nested branch)
-      tree_->publishBestPath(BSP_PLANLEVEL);
-      ROS_INFO("Finished 2nd layer: path computation lasted %2.3fs",
-                (ros::Time::now() - computationTime).toSec());
-    }else{
-      ROS_WARN("Failed to find a path in 2nd layer (%2.3fs)",
-                (ros::Time::now() - computationTime).toSec());
-    }
-  }
+  // computationTime = ros::Time::now();
+  // if ((params_.cuEnable_) && (planner_mode != 2)){
+  //   bool res_resampleBestEdge = tree_->resampleBestEdge(ext_ratio);
+  //
+  //   //Bsp: BSP planning level done, publish entire MarkerArray (full nested replanning tree)
+  //   tree_->publishPath(BSP_PLANLEVEL);
+  //   if (res_resampleBestEdge){
+  //     //Bsp: Extract the best branch
+  //     res.path = tree_->getBestBranch(req.header.frame_id);
+  //     if (!res.path.empty()){
+  //       // ++num_reruns_; //successful BSP planning steps
+  //     }
+  //     //Bsp: Publish extracted path (best nested branch)
+  //     tree_->publishBestPath(BSP_PLANLEVEL);
+  //     ROS_INFO("Finished 2nd layer: path computation lasted %2.3fs",
+  //               (ros::Time::now() - computationTime).toSec());
+  //   }else{
+  //     ROS_WARN("Failed to find a path in 2nd layer (%2.3fs)",
+  //               (ros::Time::now() - computationTime).toSec());
+  //   }
+  // }
 
   nav_msgs::Path planner_path;
   planner_path.header.stamp = ros::Time::now();

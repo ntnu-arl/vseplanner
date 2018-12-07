@@ -479,6 +479,176 @@ void vsExploration::RrtTree::iterate(int numRuns, int plannerMode)
   }
 }
 
+bool vsExploration::RrtTree::sampleVertex(StateVec &state) {
+  double radius = sqrt(
+      SQ(params_.minX_ - params_.maxX_) + SQ(params_.minY_ - params_.maxY_)
+      + SQ(params_.minZ_ - params_.maxZ_));
+  bool solutionFound_pos = false;
+  int whileThres_pos = 10000;
+  while (!solutionFound_pos && whileThres_pos--) {
+    for (int i = 0; i < 3; i++) {
+      state[i] = 2.0 * radius * (((double) rand()) / ((double) RAND_MAX) - 0.5);
+    }
+    if (SQ(state[0]) + SQ(state[1]) + SQ(state[2]) > pow(radius, 2.0))
+      continue;
+    // Offset new state by root
+    state += rootNode_->state_;
+    if (!params_.softBounds_) {
+      if (state.x() + params_.boundingBoxOffset_.x() < params_.minX_ + 0.5 * params_.boundingBox_.x()) {
+        continue;
+      } else if (state.y() + params_.boundingBoxOffset_.y() < params_.minY_ + 0.5 * params_.boundingBox_.y()) {
+        continue;
+      } else if (state.z() + params_.boundingBoxOffset_.z() < params_.minZ_ + 0.5 * params_.boundingBox_.z()) {
+        continue;
+      } else if (state.x() + params_.boundingBoxOffset_.x() > params_.maxX_ - 0.5 * params_.boundingBox_.x()) {
+        continue;
+      } else if (state.y() + params_.boundingBoxOffset_.y() > params_.maxY_ - 0.5 * params_.boundingBox_.y()) {
+        continue;
+      } else if (state.z() + params_.boundingBoxOffset_.z() > params_.maxZ_ - 0.5 * params_.boundingBox_.z()) {
+        continue;
+      }
+    }
+    // Sample ONLY in FREE MAPPED space
+    if (volumetric_mapping::OctomapManager::CellStatus::kFree !=
+        manager_->getCellStatusBoundingBox(Eigen::Vector3d(state[0],state[1],state[2])+params_.boundingBoxOffset_,params_.boundingBox_))
+      continue;
+    solutionFound_pos = true;
+  }
+  return solutionFound_pos;
+}
+
+void vsExploration::RrtTree::buildGraph()
+{
+  int loop = 10000;
+  int num_vertices_max = 200;
+  int num_edges_max = 5000;
+  int num_vertices = 0;
+  int num_edges = 0;
+  int vertex_id = 1; // start with 1 since 0 is root node
+  // Sample over a sphere with the radius of the maximum diagonal of the exploration
+  // space. Throw away samples outside the sampling region it exiting is not allowed
+  // by the corresponding parameter. This method is to not bias the tree towards the
+  // center of the exploration space.
+
+
+  while((--loop) && (num_vertices < num_vertices_max) && (num_edges < num_edges_max)) {
+      StateVec newState;
+      bool solutionFound_pos = sampleVertex(newState);
+      if (!solutionFound_pos) continue;
+      // Find nearest neighbour
+      kdres * nearest = kd_nearest3(kdTree_, newState.x(), newState.y(), newState.z());
+      if (kd_res_size(nearest) <= 0) {
+        kd_res_free(nearest);
+        return;
+      }
+
+      vsExploration::Node<StateVec> * newParent = (vsExploration::Node<StateVec> *) kd_res_item_data(nearest);
+      kd_res_free(nearest);
+
+      // Check for collision of new connection plus some overshoot distance.
+      Eigen::Vector3d origin(newParent->state_[0], newParent->state_[1], newParent->state_[2]);
+      Eigen::Vector3d direction(newState[0] - origin[0], newState[1] - origin[1],
+                                newState[2] - origin[2]);
+      if (direction.norm() > params_.extensionRange_) {
+        direction = params_.extensionRange_ * direction.normalized();
+      }
+      newState[0] = origin[0] + direction[0];
+      newState[1] = origin[1] + direction[1];
+      newState[2] = origin[2] + direction[2];
+      if (volumetric_mapping::OctomapManager::CellStatus::kFree
+          == manager_->getLineStatusBoundingBox(
+              origin+params_.boundingBoxOffset_,origin+params_.boundingBoxOffset_+direction+direction.normalized() * params_.dOvershoot_,
+              params_.boundingBox_)) {
+        // Sample the new orientation
+        newState[3] = params_.yaw_sampling_limit_ * (((double) rand()) / ((double) RAND_MAX) - 0.5); //2.0 * M_PI
+        // Create new node and insert into tree
+        vsExploration::Node<StateVec> * newNode = new vsExploration::Node<StateVec>;
+        newNode->id_ = vertex_id++;
+        newNode->state_ = newState;
+        newNode->parent_ = newParent;
+        newNode->distance_ = newParent->distance_ + direction.norm();
+        newParent->children_.push_back(newNode);
+        double new_gain = 0;
+        new_gain =  gain(newNode->state_);
+        newNode->gain_ = new_gain;
+
+        kd_insert3(kdTree_, newState.x(), newState.y(), newState.z(), newNode);
+        // Display new node
+        publishNode(newNode, vsExploration::NBVP_PLANLEVEL);
+
+        vertex_state_map_[newNode->id_] = newNode;
+        graph_.addVertex(newNode->id_);
+        ++num_vertices;
+        graph_.addEdge(newNode->id_, newParent->id_, direction.norm());
+        ++num_edges;
+
+        // Form a graph for neighbor
+        double range  = 1.0; //meter
+        kdres *neighbors = kd_nearest_range3(kdTree_, newState.x(), newState.y(), newState.z(), range);
+        int neighbors_size = kd_res_size(neighbors);
+        //ROS_INFO("Sample points: [%f,%f,%f]; neighbors size: %d", newState.x(), newState.y(), newState.z(), neighbors_size);
+        for (int i=1; i < neighbors_size; ++i) { // ignore the first one since it is the same node
+          vsExploration::Node<StateVec> * newNeighbor = (vsExploration::Node<StateVec> *) kd_res_item_data(neighbors);
+          //ROS_INFO("Edge added: [%f,%f,%f]", newNeighbor->state_.x(), newNeighbor->state_.y(), newNeighbor->state_.z());
+          Eigen::Vector3d dir(newNeighbor->state_.x() - origin[0], newNeighbor->state_.y() - origin[1],
+                              newNeighbor->state_.z() - origin[2]);
+          if (volumetric_mapping::OctomapManager::CellStatus::kFree
+              == manager_->getLineStatusBoundingBox(
+                  origin+params_.boundingBoxOffset_,origin+params_.boundingBoxOffset_+dir+dir.normalized() * params_.dOvershoot_,
+                  params_.boundingBox_)) {
+            ++num_edges;
+            graph_.addEdge(newNode->id_, newNeighbor->id_, dir.norm());
+            ++num_edges;
+          }
+          if (kd_res_next(neighbors) <= 0) break;
+        }
+        kd_res_free(neighbors);
+      }
+  }
+  ROS_INFO("Formed a tree with [%d] vertices and [%d] edges", num_vertices, num_edges);
+}
+
+void vsExploration::RrtTree::evaluateGraph() {
+  graph_.findDijkstraShortestPaths();
+  //graph_.printResults();
+
+  double best_gain = 0;
+  int best_path_id = 0;
+  int num_vertices = graph_.getNumVertices();
+  for (int id = 0; id < num_vertices; ++id) {
+    std::vector<int> path;
+    graph_.getShortestPath(id, path);
+    if (path.size()) {
+      // Compute the gain
+      double path_gain = 0;
+      // for(auto &p: path) {
+      //   path_gain += vertex_state_map_[p]->gain_;
+      // }
+      double lamda = 0.2;
+      for (std::vector<int>::iterator it = path.begin() ; it != path.end(); ++it) {
+        path_gain = (path_gain + vertex_state_map_[*it]->gain_) * exp(-lamda);
+      }
+      if (path_gain > best_gain) {
+        best_gain = path_gain;
+        best_path_id = id;
+      }
+    }
+  }
+
+  if (best_gain > 0) {
+    bestGain_ = best_gain;
+    // create a branch
+    std::vector<int> path;
+    graph_.getShortestPath(best_path_id, path);
+    for (int i=0; i < (path.size()-1); ++i) {
+      vertex_state_map_[path[i]]->parent_ = vertex_state_map_[path[i+1]];
+    }
+    bestNode_ = vertex_state_map_[path[0]];
+    //
+    ROS_INFO("Best path: with gain [%f] and ID [%d] ", best_gain, best_path_id);
+  }
+}
+
 void vsExploration::RrtTree::initialize(int numRuns)
 {
 // This function is to initialize the tree, including insertion of remainder of previous best branch.
@@ -507,6 +677,12 @@ void vsExploration::RrtTree::initialize(int numRuns)
   rootNode_->distance_ = 0.0;
   rootNode_->gain_ = params_.zero_gain_;
   rootNode_->parent_ = NULL;
+  rootNode_->id_ = 0; // root node
+  vertex_state_map_.clear();
+  vertex_state_map_[0] = rootNode_;
+  graph_ = gbplanner::Graph();
+  graph_.addSourceVertex(0);
+
 
   if (params_.exact_root_) {
     if (iterationCount_ <= 1) {
@@ -519,62 +695,62 @@ void vsExploration::RrtTree::initialize(int numRuns)
   kd_insert3(kdTree_, rootNode_->state_.x(), rootNode_->state_.y(), rootNode_->state_.z(), rootNode_);
   iterationCount_++;
 
-// Insert all nodes of the remainder of the previous best branch, checking for collisions and
-// recomputing the gain.
-  for (typename std::vector<StateVec>::reverse_iterator iter = bestBranchMemory_.rbegin();
-      iter != bestBranchMemory_.rend(); ++iter) {
-    StateVec newState = *iter;
-    kdres * nearest = kd_nearest3(kdTree_, newState.x(), newState.y(), newState.z());
-    if (kd_res_size(nearest) <= 0) {
-      kd_res_free(nearest);
-      continue;
-    }
-    vsExploration::Node<StateVec> * newParent = (vsExploration::Node<StateVec> *) kd_res_item_data(
-        nearest);
-    kd_res_free(nearest);
-
-    // Check for collision
-    Eigen::Vector3d origin(newParent->state_[0], newParent->state_[1], newParent->state_[2]);
-    Eigen::Vector3d direction(newState[0] - origin[0], newState[1] - origin[1],
-                              newState[2] - origin[2]);
-    if (direction.norm() > params_.extensionRange_) {
-      direction = params_.extensionRange_ * direction.normalized();
-    }
-    newState[0] = origin[0] + direction[0];
-    newState[1] = origin[1] + direction[1];
-    newState[2] = origin[2] + direction[2];
-    if (volumetric_mapping::OctomapManager::CellStatus::kFree
-        == manager_->getLineStatusBoundingBox(
-            origin+params_.boundingBoxOffset_, origin+params_.boundingBoxOffset_+direction+ direction.normalized() * params_.dOvershoot_,
-            params_.boundingBox_)) {
-      // Create new node and insert into tree
-      vsExploration::Node<StateVec> * newNode = new vsExploration::Node<StateVec>;
-      newNode->state_ = newState;
-      newNode->parent_ = newParent;
-      newNode->distance_ = newParent->distance_ + direction.norm();
-      newParent->children_.push_back(newNode);
-      double new_gain = 0;
-      new_gain =  gain(newNode->state_);
-      if (numRuns<params_.degressiveSwitchoffLoops_){
-        newNode->gain_ = newParent->gain_ + new_gain * exp(-params_.degressiveCoeff_ * newNode->distance_);
-      }
-      else{
-        newNode->gain_ = newParent->gain_ + new_gain;
-      }
-      kd_insert3(kdTree_, newState.x(), newState.y(), newState.z(), newNode);
-
-      // Display new node
-      publishNode(newNode, vsExploration::NBVP_PLANLEVEL);
-      //publishNode(newNode);
-
-      // Update best IG and node if applicable
-      if (newNode->gain_ > bestGain_) {
-        bestGain_ = newNode->gain_;
-        bestNode_ = newNode;
-      }
-      counter_++;
-    }
-  }
+// // Insert all nodes of the remainder of the previous best branch, checking for collisions and
+// // recomputing the gain.
+//   for (typename std::vector<StateVec>::reverse_iterator iter = bestBranchMemory_.rbegin();
+//       iter != bestBranchMemory_.rend(); ++iter) {
+//     StateVec newState = *iter;
+//     kdres * nearest = kd_nearest3(kdTree_, newState.x(), newState.y(), newState.z());
+//     if (kd_res_size(nearest) <= 0) {
+//       kd_res_free(nearest);
+//       continue;
+//     }
+//     vsExploration::Node<StateVec> * newParent = (vsExploration::Node<StateVec> *) kd_res_item_data(
+//         nearest);
+//     kd_res_free(nearest);
+//
+//     // Check for collision
+//     Eigen::Vector3d origin(newParent->state_[0], newParent->state_[1], newParent->state_[2]);
+//     Eigen::Vector3d direction(newState[0] - origin[0], newState[1] - origin[1],
+//                               newState[2] - origin[2]);
+//     if (direction.norm() > params_.extensionRange_) {
+//       direction = params_.extensionRange_ * direction.normalized();
+//     }
+//     newState[0] = origin[0] + direction[0];
+//     newState[1] = origin[1] + direction[1];
+//     newState[2] = origin[2] + direction[2];
+//     if (volumetric_mapping::OctomapManager::CellStatus::kFree
+//         == manager_->getLineStatusBoundingBox(
+//             origin+params_.boundingBoxOffset_, origin+params_.boundingBoxOffset_+direction+ direction.normalized() * params_.dOvershoot_,
+//             params_.boundingBox_)) {
+//       // Create new node and insert into tree
+//       vsExploration::Node<StateVec> * newNode = new vsExploration::Node<StateVec>;
+//       newNode->state_ = newState;
+//       newNode->parent_ = newParent;
+//       newNode->distance_ = newParent->distance_ + direction.norm();
+//       newParent->children_.push_back(newNode);
+//       double new_gain = 0;
+//       new_gain =  gain(newNode->state_);
+//       if (numRuns<params_.degressiveSwitchoffLoops_){
+//         newNode->gain_ = newParent->gain_ + new_gain * exp(-params_.degressiveCoeff_ * newNode->distance_);
+//       }
+//       else{
+//         newNode->gain_ = newParent->gain_ + new_gain;
+//       }
+//       kd_insert3(kdTree_, newState.x(), newState.y(), newState.z(), newNode);
+//
+//       // Display new node
+//       publishNode(newNode, vsExploration::NBVP_PLANLEVEL);
+//       //publishNode(newNode);
+//
+//       // Update best IG and node if applicable
+//       if (newNode->gain_ > bestGain_) {
+//         bestGain_ = newNode->gain_;
+//         bestNode_ = newNode;
+//       }
+//       counter_++;
+//     }
+//   }
 
 // Publish visualization of total exploration area
   visualization_msgs::Marker p;

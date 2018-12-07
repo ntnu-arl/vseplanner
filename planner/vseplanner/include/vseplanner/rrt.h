@@ -32,6 +32,7 @@
 #include <kdtree/kdtree.h>
 #include <vseplanner/tree.h>
 #include <vseplanner/mesh_structure.h>
+#include <vseplanner/graph.h>
 
 #define SQ(x) ((x)*(x))
 #define SQRT2 0.70711
@@ -51,6 +52,8 @@ class RrtTree : public TreeBase<Eigen::Vector4d>
   virtual void setPeerStateFromPoseMsg(const geometry_msgs::PoseWithCovarianceStamped& pose, int n_peer);
   virtual void initialize(int numRuns);
   virtual void iterate(int numRuns, int plannerMode);
+  virtual void buildGraph();
+  virtual void evaluateGraph();
   virtual bool resampleBestEdge(double ext_ratio);
   virtual bool resampleFirstVertex(int numRuns);
   void rePublishNode(Node<StateVec> * node, vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL, int nodeorder=0);
@@ -75,6 +78,7 @@ class RrtTree : public TreeBase<Eigen::Vector4d>
 
   double gain(StateVec state);
   double curiousGain(StateVec state);
+  bool sampleVertex(StateVec &state);
 
   std::vector<geometry_msgs::Pose> samplePath(StateVec start, StateVec end,
                                               std::string targetFrame);
@@ -103,6 +107,9 @@ class RrtTree : public TreeBase<Eigen::Vector4d>
   std::vector<double> erate_buf_;
   image_geometry::PinholeCameraModel cam_model_;
   bool cam_model_ready_;
+
+  gbplanner::Graph graph_;
+  std::map<int, Node<StateVec>*> vertex_state_map_;
 
 };
 }

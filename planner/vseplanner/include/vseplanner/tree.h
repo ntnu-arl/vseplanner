@@ -156,6 +156,9 @@ struct Params
 
   bool softStart_;
   double softStartMinZ_;
+
+  bool explorationMode_;
+
 };
 
 template<typename stateVec>
@@ -216,6 +219,8 @@ class TreeBase
   void setPeerStateFromPoseMsg2(const geometry_msgs::PoseWithCovarianceStamped& pose);
   void setPeerStateFromPoseMsg3(const geometry_msgs::PoseWithCovarianceStamped& pose);
   virtual void iterate(int numRuns, int plannerMode) = 0;
+  virtual void buildGraph() = 0;
+  virtual void evaluateGraph() = 0;
   virtual void initialize(int numRuns) = 0;
   virtual bool resampleBestEdge(double ext_ratio) = 0;
   virtual bool resampleFirstVertex(int numRuns) = 0;

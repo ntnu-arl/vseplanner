@@ -19,6 +19,7 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(cmake_modules REQUIRED)
 find_package(Eigen REQUIRED)
 find_package(octomap REQUIRED)
+find_package(Boost REQUIRED)
 
 add_service_files(
   FILES
@@ -43,12 +44,13 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
   ${Eigen_INCLUDE_DIRS}
   ${OCTOMAP_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
 )
 MESSAGE( STATUS "variable is:------------------------ " ${catkin_INCLUDE_DIRS} )
-add_library(vsePlannerLib src/mesh_structure.cpp src/vsep.cpp src/rrt.cpp src/tree.cpp)
+add_library(vsePlannerLib src/mesh_structure.cpp src/vsep.cpp src/rrt.cpp src/tree.cpp src/graph.cpp)
 add_dependencies(vsePlannerLib ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
-add_executable(vsePlanner src/vseplanner_node.cpp src/mesh_structure.cpp src/vsep.cpp src/rrt.cpp src/tree.cpp)
+add_executable(vsePlanner src/vseplanner_node.cpp src/mesh_structure.cpp src/vsep.cpp src/rrt.cpp src/tree.cpp src/graph.cpp)
 add_dependencies(vsePlanner ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 target_link_libraries(vsePlannerLib
@@ -59,4 +61,3 @@ target_link_libraries(vsePlanner
   ${catkin_LIBRARIES}
   ${OCTOMAP_LIBRARIES}
 )
-
