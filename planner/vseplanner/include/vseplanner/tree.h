@@ -240,6 +240,9 @@ class TreeBase
   virtual void publishPath(vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL) = 0;
   virtual void publishBestPath(vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL) = 0;
 
+  virtual void saveWaypoint() = 0;
+  virtual void updateVSEPWaypoint() = 0;
+
   int getCounter();
   bool gainFound();
   bool reGainFound();

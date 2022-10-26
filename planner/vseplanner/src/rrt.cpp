@@ -106,7 +106,12 @@ vsExploration::RrtTree::~RrtTree()
   if (filePath_.is_open()) {
     filePath_.close();
   }
-
+  if (fileWaypointVSEP.is_open()) {
+    fileWaypointVSEP.close();
+  }
+  if (fileWaypointExplore.is_open()) {
+    fileWaypointExplore.close();
+  }
 
 }
 
@@ -117,6 +122,7 @@ void vsExploration::RrtTree::setStateFromPoseMsg(
   static tf::TransformListener listener;
   tf::StampedTransform transform;
   try {
+    listener.waitForTransform(params_.navigationFrame_, pose.header.frame_id, pose.header.stamp, ros::Duration(0.1));
     listener.lookupTransform(params_.navigationFrame_, pose.header.frame_id, pose.header.stamp,
                              transform);
   } catch (tf::TransformException ex) {
@@ -196,6 +202,7 @@ void vsExploration::RrtTree::setStateFromOdometryMsg(
   static tf::TransformListener listener;
   tf::StampedTransform transform;
   try {
+    listener.waitForTransform(params_.navigationFrame_, pose.header.frame_id, pose.header.stamp, ros::Duration(0.1));
     listener.lookupTransform(params_.navigationFrame_, pose.header.frame_id, pose.header.stamp,
                              transform);
   } catch (tf::TransformException ex) {
@@ -275,6 +282,7 @@ void vsExploration::RrtTree::setPeerStateFromPoseMsg(
   static tf::TransformListener listener;
   tf::StampedTransform transform;
   try {
+    listener.waitForTransform(params_.navigationFrame_, pose.header.frame_id, pose.header.stamp, ros::Duration(0.1));
     listener.lookupTransform(params_.navigationFrame_, pose.header.frame_id, pose.header.stamp,
                              transform);
   } catch (tf::TransformException ex) {
@@ -641,6 +649,9 @@ bool vsExploration::RrtTree::resampleBestEdge(double ext_ratio){
   ext_ratio = (ext_ratio <= params_.extend_ratio_max_) ? ext_ratio : params_.extend_ratio_max_;
 
   ROS_INFO("Extend ratio (after checking the time budget) : %f", ext_ratio);
+  // ROS_WARN_STREAM("SRC node:" << sourceNode->state_[0] << "," << sourceNode->state_[1] << "," << sourceNode->state_[2]
+  //               << "TGT node:" << targetNode->state_[0] << "," << targetNode->state_[1] << "," << targetNode->state_[2]);
+
   return connect(sourceNode, targetNode, ext_ratio);
 }
 
@@ -1302,6 +1313,9 @@ bool vsExploration::RrtTree::connect(vsExploration::Node<StateVec> *sourceNode,
 void vsExploration::RrtTree::publishBestPath(vsExploration::PlanningLevel planninglevel)
 {
   vsExploration::Node<StateVec> * node = bestNode_;
+  Eigen::Vector3d eigen_point;
+  std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> waypointListVSEPTmp_;
+  std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> waypointListExploreTmp_;  
   while (node != rootNode_ && node->parent_ != NULL) {
     const ros::Duration lifetime(params_.bestPlanMarker_lifetime_);
     visualization_msgs::Marker p;
@@ -1351,11 +1365,13 @@ void vsExploration::RrtTree::publishBestPath(vsExploration::PlanningLevel planni
     p.color.a = 1.0;
     p.lifetime = lifetime;
     p.frame_locked = false;
+    eigen_point << node->state_[0], node->state_[1], node->state_[2];
     if (planninglevel == vsExploration::NBVP_PLANLEVEL){
       p.color.r = 0.75;
       p.color.g = 0.75;
       p.color.b = 0.0;
       params_.bestPlanningPath_markers_.markers.push_back(p);
+      waypointListExploreTmp_.push_back(eigen_point);
     }else if (planninglevel == vsExploration::SAL_PLANLEVEL){
       p.color.r = 0.0;
       p.color.g = 0.75;
@@ -1367,6 +1383,7 @@ void vsExploration::RrtTree::publishBestPath(vsExploration::PlanningLevel planni
       p.color.g = 0.75;
       p.color.b = 0.0;
       params_.bestRePlanningPath_markers_.markers.push_back(p);
+      waypointListVSEPTmp_.push_back(eigen_point);
     }
 
     if (!node->parent_)
@@ -1405,11 +1422,17 @@ void vsExploration::RrtTree::publishBestPath(vsExploration::PlanningLevel planni
     p.color.a = 1.0;
     p.lifetime = lifetime;
     p.frame_locked = false;
+    if (node->parent_ == rootNode_){
+      eigen_point << node->parent_->state_[0], node->parent_->state_[1], node->parent_->state_[2];
+    }
     if (planninglevel == vsExploration::NBVP_PLANLEVEL){
       p.color.r = 0.0;
       p.color.g = 0.75;
       p.color.b = 0.75;
       params_.bestPlanningPath_markers_.markers.push_back(p);
+      if (node->parent_ == rootNode_){
+        waypointListExploreTmp_.push_back(eigen_point);
+      }
     }else if (planninglevel == vsExploration::SAL_PLANLEVEL){
       p.color.r = 0.5;
       p.color.g = 0.0;
@@ -1421,18 +1444,59 @@ void vsExploration::RrtTree::publishBestPath(vsExploration::PlanningLevel planni
       p.color.g = 0.0;
       p.color.b = 0;
       params_.bestRePlanningPath_markers_.markers.push_back(p);
+      if (node->parent_ == rootNode_){
+        waypointListVSEPTmp_.push_back(eigen_point);
+      }
     }
 
     node = node->parent_;
   }
 
+  int i;
+  int waypoint_num; 
   if ((planninglevel == vsExploration::NBVP_PLANLEVEL) ||
      (planninglevel == vsExploration::SAL_PLANLEVEL)){
     params_.bestPlanningPath_.publish(params_.bestPlanningPath_markers_);
+    waypoint_num = waypointListExploreTmp_.size();
+    for (i = waypoint_num - 1; i >= waypoint_num - 2; i--){ // print the root first and only the first exploration edge
+      eigen_point = waypointListExploreTmp_[i];
+      waypointListExplore_.push_back(eigen_point);
+    }
   }
   else if (planninglevel == vsExploration::BSP_PLANLEVEL){
     params_.bestRePlanningPath_.publish(params_.bestRePlanningPath_markers_);
+    waypoint_num = waypointListVSEPTmp_.size();
+    for (i = waypoint_num - 1; i >= 0; i--){ // print the root first
+      eigen_point = waypointListVSEPTmp_[i];
+      waypointListVSEP_.push_back(eigen_point);
+    }
   }
+}
+
+void vsExploration::RrtTree::updateVSEPWaypoint()
+{
+  int waypoint_num = waypointListExplore_.size();
+  waypointListVSEP_.push_back(waypointListExplore_[waypoint_num-2]);
+  waypointListVSEP_.push_back(waypointListExplore_[waypoint_num-1]);
+}
+
+void vsExploration::RrtTree::saveWaypoint()
+{
+  fileWaypointVSEP.open("/home/huan/waypoint_gallery_VSEP.txt", std::ios::trunc); // HARD CODE
+  fileWaypointExplore.open("/home/huan/waypoint_gallery_Explore.txt", std::ios::trunc);
+  int i;
+  for (i = 0; i < waypointListExplore_.size(); i++)
+  {
+    Eigen::Vector3d waypoint = waypointListExplore_[i];
+    fileWaypointExplore << waypoint[0] << " " << waypoint[1] << " " << waypoint[2] << "\n";
+  }
+  for (i = 0; i < waypointListVSEP_.size(); i++)
+  {
+    Eigen::Vector3d waypoint = waypointListVSEP_[i];
+    fileWaypointVSEP << waypoint[0] << " " << waypoint[1] << " " << waypoint[2] << "\n";
+  }
+  fileWaypointVSEP.close();
+  fileWaypointExplore.close();
 }
 
 std::vector<geometry_msgs::Pose> vsExploration::RrtTree::getBestBranch(std::string targetFrame)
@@ -1544,7 +1608,7 @@ void vsExploration::RrtTree::updateToEval(ros::Time time_stamp){
   static tf::TransformListener listener;
   tf::StampedTransform transform;
   try {
-    //listener.waitForTransform(params_.navigationFrame_, params_.bodyFrame_,  img->header.stamp, ros::Duration(1) );
+    listener.waitForTransform(params_.navigationFrame_, params_.bodyFrame_,  time_stamp, ros::Duration(0.1) );
     listener.lookupTransform(params_.navigationFrame_, params_.bodyFrame_,  time_stamp, transform);
   } catch (tf::TransformException ex) {
     ROS_ERROR("Can not lookup %s", ex.what());

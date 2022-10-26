@@ -60,6 +60,9 @@ vsExploration::vsePlanner<stateVec>::vsePlanner(const ros::NodeHandle& nh,
   plannerService_ = nh_.advertiseService("vseplanner",
                                          &vsExploration::vsePlanner<stateVec>::plannerCallback,
                                          this);
+  saveWaypointService_ = nh_.advertiseService("save_waypoint",
+                                         &vsExploration::vsePlanner<stateVec>::saveWaypointCallback,
+                                         this);
   saveMapClient_ = nh_.serviceClient<volumetric_msgs::SaveMap> ("vsePlanner/save_map");
 
   plannerPub_ = nh_.advertise<nav_msgs::Path>("planner_path", 1000);
@@ -189,6 +192,14 @@ void vsExploration::vsePlanner<stateVec>::odomCallback(
 }
 
 template<typename stateVec>
+bool vsExploration::vsePlanner<stateVec>::saveWaypointCallback(std_srvs::Empty::Request& req, 
+                                                               std_srvs::Empty::Response& res)
+{
+  tree_->saveWaypoint();
+  return true;
+}
+
+template<typename stateVec>
 bool vsExploration::vsePlanner<stateVec>::plannerCallback(vsep_msgs::vsep_srv::Request& req,
                                                           vsep_msgs::vsep_srv::Response& res)
 {
@@ -268,7 +279,7 @@ bool vsExploration::vsePlanner<stateVec>::plannerCallback(vsep_msgs::vsep_srv::R
   }
   else {
     tree_->publishPath(NBVP_PLANLEVEL);
-    tree_->publishBestPath(NBVP_PLANLEVEL);
+    tree_->publishBestPath(NBVP_PLANLEVEL); // NBVP path
   }
 
   res.path = tree_->getBestEdge(req.header.frame_id);
@@ -292,10 +303,11 @@ bool vsExploration::vsePlanner<stateVec>::plannerCallback(vsep_msgs::vsep_srv::R
         // ++num_reruns_; //successful BSP planning steps
       }
       //Bsp: Publish extracted path (best nested branch)
-      tree_->publishBestPath(BSP_PLANLEVEL);
+      tree_->publishBestPath(BSP_PLANLEVEL); // VSEP path
       ROS_INFO("Finished 2nd layer: path computation lasted %2.3fs",
                 (ros::Time::now() - computationTime).toSec());
     }else{
+      tree_->updateVSEPWaypoint(); // append latest Exploration waypoints to VSEP waypoint list here
       ROS_WARN("Failed to find a path in 2nd layer (%2.3fs)",
                 (ros::Time::now() - computationTime).toSec());
     }

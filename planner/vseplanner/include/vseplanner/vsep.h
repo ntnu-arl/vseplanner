@@ -65,6 +65,7 @@ class vsePlanner
   ros::Subscriber peerPosClient2_;
   ros::Subscriber peerPosClient3_;
   ros::ServiceServer plannerService_;
+  ros::ServiceServer saveWaypointService_;
 
   ros::ServiceClient plannerPubServiceClient_;
   ros::ServiceClient saveMapClient_;
@@ -104,7 +105,7 @@ class vsePlanner
 
   void camCallback(const sensor_msgs::ImageConstPtr& camIn);
   void camInfoCallback(const sensor_msgs::CameraInfoConstPtr& camInfoIn);
-
+  bool saveWaypointCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& res);
 };
 }
 

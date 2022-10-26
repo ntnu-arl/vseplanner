@@ -26,6 +26,8 @@
 #include <ros/ros.h>
 #include <ros/package.h>
 #include <sstream>
+#include <iostream>
+#include <fstream>
 #include <eigen3/Eigen/Dense>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include <nav_msgs/Odometry.h>
@@ -66,6 +68,8 @@ class RrtTree : public TreeBase<Eigen::Vector4d>
   virtual std::vector<geometry_msgs::Pose> getBestBranch(std::string targetFrame);
   virtual void publishPath(vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL);
   virtual void publishBestPath(vsExploration::PlanningLevel planninglevel=NBVP_PLANLEVEL);
+  virtual void saveWaypoint();
+  virtual void updateVSEPWaypoint();
 
   virtual void clear();
   virtual std::vector<geometry_msgs::Pose> getPathBackToPrevious(std::string targetFrame);
@@ -97,6 +101,8 @@ class RrtTree : public TreeBase<Eigen::Vector4d>
   std::fstream fileTree_;
   std::fstream filePath_;
   std::fstream fileResponse_;
+  std::ofstream fileWaypointVSEP;
+  std::ofstream fileWaypointExplore;
   std::string logFilePath_;
   std::vector<double> inspectionThrottleTime_;
 
@@ -104,6 +110,8 @@ class RrtTree : public TreeBase<Eigen::Vector4d>
   image_geometry::PinholeCameraModel cam_model_;
   bool cam_model_ready_;
 
+  std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> waypointListVSEP_;
+  std::vector<Eigen::Vector3d, Eigen::aligned_allocator<Eigen::Vector3d>> waypointListExplore_;
 };
 }
 
