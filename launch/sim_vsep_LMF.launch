@@ -1,0 +1,108 @@
+<launch>
+  <arg name="use_sim_time" default="true" />
+  <arg name="mav_name" default="delta" />
+  <arg name="world_name" default="basic"/>
+  <arg name="enable_logging" default="false" />
+  <arg name="enable_ground_truth" default="true" />
+  <arg name="log_file" default="$(arg mav_name)" />
+  <arg name="rviz_en" default="true" />
+  <arg name="gazebo_en" default="false" />
+
+  <env name="GAZEBO_MODEL_PATH" value="${GAZEBO_MODEL_PATH}:$(find rmf_sim)/models:$(find rotors_gazebo)/models"/>
+  <env name="GAZEBO_RESOURCE_PATH" value="${GAZEBO_RESOURCE_PATH}:$(find rmf_sim)/models:$(find rotors_gazebo)/models"/>
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <!-- <arg name="world_name" value="$(find rotors_gazebo)/worlds/$(arg world_name).world" /> -->
+    <!-- <arg name="world_name" value="$(find interface_vsep_rotors)/worlds/sim_vsep_avg_env.world" /> -->
+    <!-- <arg name="world_name" default="$(find rmf_sim)/worlds/sim_vsep_avg_env_1x.world" /> -->
+    <arg name="world_name" default="$(find rmf_sim)/worlds/sim_vsep_dense_env_1x.world" />
+    <!-- <arg name="debug" value="true"/> -->
+    <arg name="paused" value="false"/>
+    <arg name="gui" value="$(arg gazebo_en)"/>
+  </include>
+
+  <!-- <node name="img_throttler" type="throttle" pkg="topic_tools" args="messages /$(arg mav_name)/vi_sensor/left/image_raw 4 /$(arg mav_name)/vi_sensor/left/image_raw_throttled" /> -->
+  <!-- Saliency processing -->
+	<arg name="imagestream" value="/delta/rgbd/camera_rgb/image_raw"  />
+	<arg name="algorithm" value="VOCUS2" />
+	<node name="saliencymap$(arg algorithm)" pkg="visual_saliency" type="saliencyDetectionVOCUS2" output="screen">
+		<remap from="/rgbimage_in" to="$(arg imagestream)" />
+		<remap from="/saliency/image" to="/saliency/image" />
+		<param name="image_resize_percent" type="double" value="0.25"/>
+		<param name="threshold_percent" type="double" value="0.025" />
+    <!-- <param name="threshold_saliency" type="double" value="0.0018" /> -->
+    <param name="threshold_saliency" type="double" value="0.01" />
+    <param name="topcut_enable" type="bool" value="false" />
+    <param name="topcut_pixels" type="int" value="0" />
+    <param name="time_show" type="bool" value="false" />
+	</node>
+
+  <node pkg="tf" type="static_transform_publisher" name="tf_53" args="0 0 0 0 0 0 world navigation 10" />
+
+  <arg name="subscript" default="" />
+  <arg name="param_file" value="$(find interface_vsep_rotors)/../../launch/sim_vsep.yaml" />
+  <arg name="pcl_topic" value="/delta/rgbd/camera_depth/depth/points" />
+  <arg name="waypoint_x" value="3.0" /> <!-- -3.0 -->
+  <arg name="waypoint_y" value="10.0" />
+  <arg name="waypoint_z" value="1.0" />
+
+  <!-- <node pkg="tf" type="static_transform_publisher" name="tf_1$(arg subscript)" args="0 0 0 0 0 0 $(arg mav_name)$(arg subscript)/vi_sensor/base_link fcu$(arg subscript) 10" /> -->
+  <!-- <node pkg="tf" type="static_transform_publisher" name="tf_2$(arg subscript)" args="0.015 0.055 0.0065 -1.57 0.1 -1.57 fcu$(arg subscript) $(arg mav_name)$(arg subscript)/vi_sensor/camera_depth_optical_center_link 10" /> -->
+  <!-- <node pkg="tf" type="static_transform_publisher" name="tf_3$(arg subscript)" args="0.015 0.055 0.0065 -1.57 0.1 -1.57 fcu$(arg subscript) $(arg mav_name)$(arg subscript)/vi_sensor/camera_left_link 10" />
+  <node pkg="tf" type="static_transform_publisher" name="tf_4$(arg subscript)" args="0.015 -0.055 0.0065 -1.57 0.1 -1.57 fcu$(arg subscript) $(arg mav_name)$(arg subscript)/vi_sensor/camera_right_link 10" /> -->
+  <node pkg="tf" type="static_transform_publisher" name="tf_depth" args="0.09 0.04 0.024 -1.570796 0.0 -1.570796 $(arg mav_name)/base_link $(arg mav_name)/rgbd/camera_depth_optical_center_link 10" />
+  <node pkg="tf" type="static_transform_publisher" name="tf_rgb" args="0.09 -0.019 0.024 -1.570796 0.0 -1.570796 $(arg mav_name)/base_link $(arg mav_name)/rgbd/camera_rgb_optical_center_link 10" />
+  <node pkg="tf" type="static_transform_publisher" name="tf_rgb2" args="0.09 -0.019 0.024 -1.570796 0.0 -1.570796 $(arg mav_name)/base_link $(arg mav_name)/rgbd/camera_rgb_link 10" />
+
+  <group ns="$(arg mav_name)$(arg subscript)">
+    <param name="wp_x" type="double" value="$(arg waypoint_x)"/>
+    <param name="wp_y" type="double" value="$(arg waypoint_y)" />
+    <param name="wp_z" type="double" value="$(arg waypoint_z)" />
+    <include file="$(find rotors_gazebo)/launch/spawn_mav.launch">
+      <arg name="mav_name" value="$(arg mav_name)$(arg subscript)" />
+      <arg name="model" value="$(find rmf_sim)/rotors/urdf/$(arg mav_name).gazebo" />
+      <arg name="enable_logging" value="$(arg enable_logging)" />
+      <arg name="enable_ground_truth" value="$(arg enable_ground_truth)" />
+      <arg name="log_file" value="$(arg log_file)"/>
+      <arg name="x" value="$(arg waypoint_x)"/>
+      <arg name="y" value="$(arg waypoint_y)"/>
+      <arg name="z" value="1.0"/>
+    </include>
+
+    <node name="lee_position_controller_node" pkg="rotors_control" type="lee_position_controller_node" output="screen">
+      <rosparam command="load" file="$(find rmf_sim)/rotors/lee_controller_$(arg mav_name).yaml" />
+      <rosparam command="load" file="$(find rmf_sim)/rotors/$(arg mav_name).yaml" />
+      <param name="mass" type="double" value="0.5" />
+      <remap from="odometry" to="odometry_sensor1/odometry" />
+    </node>
+
+    <node name="exploration" pkg="interface_vsep_rotors" type="exploration" output="screen" >
+      <param name="automatic" type="bool" value="true" />
+      <param name="initialization_enable" type="bool" value="true" />
+      <rosparam command="load" file="$(arg param_file)" />
+    </node>
+    
+    <!-- <node name="vsePlanner" pkg="vseplanner" type="vsePlanner" output="screen" >
+      <param name="tf_frame" type="string" value="navigation" />
+      <param name="body_frame" type="string" value="firefly/base_link" />
+      <param name="resolution" type="double" value="0.4" />
+      <param name="visualize_max_z" type="double" value="3.0" />
+      <param name="sensor_max_range" type="double" value="6.0" />
+      <param name="map_publish_frequency" type="double" value="1.0" />
+      <remap from="cam0/camera_info" to="/$(arg mav_name)$(arg subscript)/vi_sensor/left/camera_info"/>
+      <remap from="cam1/camera_info" to="/$(arg mav_name)$(arg subscript)/vi_sensor/right/camera_info"/>
+      <remap from="pointcloud_throttled" to="$(arg pcl_topic)"/>
+      <remap from="pose" to="/$(arg mav_name)$(arg subscript)/ground_truth/pose_with_covariance"/>
+      <remap from="vseplanner" to="/$(arg mav_name)$(arg subscript)/vseplanner"/>
+      <remap from="image_saliency" to="/saliency/image_norm"/>
+      <remap from="image_info" to="/$(arg mav_name)/vi_sensor/left/camera_info"/>
+      <rosparam command="load" file="$(arg param_file)" />
+    </node> -->
+  </group>
+  
+  <!-- Rviz -->
+  <group if="$(arg rviz_en)">
+    <node launch-prefix="nice" pkg="rviz" type="rviz" name="rviz" args="-d $(find vseplanner)/../../launch/sim_vsep_LMF.rviz --verbose" output="screen">
+      <!-- <remap from="goal" to="$(arg robot_name)/goal" /> --> <!-- this rviz use geometry_msgs/PoseStamped instead of geometry_msgs/Pose-->
+    </node>
+  </group>
+</launch>

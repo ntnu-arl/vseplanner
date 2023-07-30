@@ -222,6 +222,9 @@ bool vsExploration::vsePlanner<stateVec>::plannerCallback(vsep_msgs::vsep_srv::R
     ROS_ERROR_THROTTLE(1, "Planner not set up: Octomap is empty!");
     return true;
   }
+  if (tree_->getPlannerState() == PSTATE_EXPL_FINISH) {
+    return true;
+  }
   res.path.clear();
 
   // Clear old tree and reinitialize.

@@ -420,6 +420,13 @@ void vsExploration::RrtTree::iterate(int numRuns, int plannerMode)
     return;
   }
 
+  // vsExploration::Node<StateVec> * newParent = rootNode_; // prevent zig-zag path
+  Eigen::Vector3d dist2root(newState[0] - rootNode_->state_[0], 
+                            newState[1] - rootNode_->state_[1], 
+                            newState[2] - rootNode_->state_[2]);
+  if (dist2root.norm() < 4.0) { // if the edge is too short (this leads to 2.5m edge somehow)
+    return;
+  }
 // Find nearest neighbour
   kdres * nearest = kd_nearest3(kdTree_, newState.x(), newState.y(), newState.z());
   if (kd_res_size(nearest) <= 0) {
@@ -642,11 +649,12 @@ bool vsExploration::RrtTree::resampleBestEdge(double ext_ratio){
   dyaw = abs(dyaw);
 
   // dt is cancelled out
-  double t_exec = std::max(dyaw / params_.dyaw_max_, dist / params_.v_max_);
-  double dist_allow = t_exec * params_.v_max_;
+  // double t_exec = std::max(dyaw / params_.dyaw_max_, dist / params_.v_max_);
+  // double dist_allow = t_exec * params_.v_max_;
 
-  ext_ratio = ext_ratio * dist_allow / dist;
-  ext_ratio = (ext_ratio <= params_.extend_ratio_max_) ? ext_ratio : params_.extend_ratio_max_;
+  // ext_ratio = ext_ratio * dist_allow / dist;
+  // ext_ratio = (ext_ratio <= params_.extend_ratio_max_) ? ext_ratio : params_.extend_ratio_max_;
+  ext_ratio = params_.extend_ratio_max_; // fix the extend_ration to compare with Attentive ORACLE
 
   ROS_INFO("Extend ratio (after checking the time budget) : %f", ext_ratio);
   // ROS_WARN_STREAM("SRC node:" << sourceNode->state_[0] << "," << sourceNode->state_[1] << "," << sourceNode->state_[2]
@@ -909,6 +917,12 @@ bool vsExploration::RrtTree::connect(vsExploration::Node<StateVec> *sourceNode,
       rand_state[0] = state_tf.x();
       rand_state[1] = state_tf.y();
       rand_state[2] = state_tf.z();
+      // helps VSEP a bit here!
+      if (rand_state[2] > params_.maxZ_ - 0.5 * params_.boundingBox_.z()) {
+        rand_state[2] = params_.maxZ_ - 0.5 * params_.boundingBox_.z();
+      } else if (rand_state[2] < params_.minZ_ + 0.5 * params_.boundingBox_.z()) {
+        rand_state[2] = params_.minZ_ + 0.5 * params_.boundingBox_.z();
+      }
 
       // // Sampling in the whole bounding box for cases that we need to perform second layer only
       // for (int i = 0; i < 3; i++) {
@@ -1039,7 +1053,7 @@ bool vsExploration::RrtTree::connect(vsExploration::Node<StateVec> *sourceNode,
       Eigen::Vector3d target_radius(targetNode->state_[0]-vertex[0],
                                     targetNode->state_[1]-vertex[1],
                                     targetNode->state_[2]-vertex[2]);
-      if (target_radius.norm() < 0.4 ){ //  voxel resolution
+      if (target_radius.norm() < 1.0 ){ //  increase this radius to find more feasible paths!
         // Reach target, but have to check the clearance
         // Check collision along this node to target node
         Eigen::Vector3d node_start(vertex[0], vertex[1], vertex[2]);
@@ -1458,7 +1472,7 @@ void vsExploration::RrtTree::publishBestPath(vsExploration::PlanningLevel planni
      (planninglevel == vsExploration::SAL_PLANLEVEL)){
     params_.bestPlanningPath_.publish(params_.bestPlanningPath_markers_);
     waypoint_num = waypointListExploreTmp_.size();
-    for (i = waypoint_num - 1; i >= waypoint_num - 2; i--){ // print the root first and only the first exploration edge
+    for (i = waypoint_num - 1; i >= waypoint_num - 2; i--){ // print the root first (hence reverse-order here) and only the first exploration edge
       eigen_point = waypointListExploreTmp_[i];
       waypointListExplore_.push_back(eigen_point);
     }
@@ -1473,7 +1487,7 @@ void vsExploration::RrtTree::publishBestPath(vsExploration::PlanningLevel planni
   }
 }
 
-void vsExploration::RrtTree::updateVSEPWaypoint()
+void vsExploration::RrtTree::updateVSEPWaypoint() // add the last exploration edge when no VSEP path is found
 {
   int waypoint_num = waypointListExplore_.size();
   waypointListVSEP_.push_back(waypointListExplore_[waypoint_num-2]);
