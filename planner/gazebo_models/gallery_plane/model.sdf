@@ -1,0 +1,30 @@
+<?xml version="1.0" ?>
+<sdf version="1.5">
+  <model name="gallery_plane">
+    <static>true</static>
+    <link name="link">
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size>17 17 .1</size>
+          </box>
+        </geometry>
+      </collision>
+      <visual name="visual">
+        <cast_shadows>false</cast_shadows>
+        <geometry>
+          <box>
+            <size>17 17 .1</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>model://gallery_plane/materials/scripts</uri>
+            <uri>model://gallery_plane/materials/textures</uri>
+            <name>gallery/plane</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>
